@@ -29,7 +29,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Operator can run an import that loads Oracle phone rows and `CUST_SID` values into SQL Server.
   3. Imported phone data is normalized into a canonical format and duplicate numbers are linked to all relevant `CUST_SID` values.
   4. Import history shows batch-level totals for read, imported, and rejected rows.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 01-01: Bootstrap the solution, host, configuration model, and test infrastructure
+- [ ] 01-02: Build the canonical SQL Server data model, normalization rules, and import-audit persistence
+- [ ] 01-03: Wire the Oracle import adapter and console workflow onto the Phase 1 foundation
 
 ### Phase 2: Number Intelligence
 **Goal**: Deliver Twilio-based enrichment that stores provider facts and derived eligibility for imported phone records.
@@ -80,7 +85,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 0/TBD | Not started | - |
+| 1. Data Foundation | 0/3 | Not started | - |
 | 2. Number Intelligence | 0/TBD | Not started | - |
 | 3. Campaign Execution | 0/TBD | Not started | - |
 | 4. Delivery Pipeline | 0/TBD | Not started | - |
