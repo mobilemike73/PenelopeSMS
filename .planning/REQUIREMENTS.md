@@ -78,31 +78,31 @@ To be populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IMPT-01 | TBD | Pending |
-| IMPT-02 | TBD | Pending |
-| IMPT-03 | TBD | Pending |
-| IMPT-04 | TBD | Pending |
-| ENRH-01 | TBD | Pending |
-| ENRH-02 | TBD | Pending |
-| ENRH-03 | TBD | Pending |
-| ENRH-04 | TBD | Pending |
-| CAMP-01 | TBD | Pending |
-| CAMP-02 | TBD | Pending |
-| CAMP-03 | TBD | Pending |
-| CAMP-04 | TBD | Pending |
-| CAMP-05 | TBD | Pending |
-| CAMP-06 | TBD | Pending |
-| MON-01 | TBD | Pending |
-| MON-02 | TBD | Pending |
-| MON-03 | TBD | Pending |
-| MON-04 | TBD | Pending |
-| OPER-01 | TBD | Pending |
-| OPER-02 | TBD | Pending |
+| IMPT-01 | Phase 1 | Pending |
+| IMPT-02 | Phase 1 | Pending |
+| IMPT-03 | Phase 1 | Pending |
+| IMPT-04 | Phase 1 | Pending |
+| ENRH-01 | Phase 2 | Pending |
+| ENRH-02 | Phase 2 | Pending |
+| ENRH-03 | Phase 2 | Pending |
+| ENRH-04 | Phase 2 | Pending |
+| CAMP-01 | Phase 3 | Pending |
+| CAMP-02 | Phase 3 | Pending |
+| CAMP-03 | Phase 3 | Pending |
+| CAMP-04 | Phase 3 | Pending |
+| CAMP-05 | Phase 3 | Pending |
+| CAMP-06 | Phase 3 | Pending |
+| MON-01 | Phase 4 | Pending |
+| MON-02 | Phase 4 | Pending |
+| MON-03 | Phase 4 | Pending |
+| MON-04 | Phase 5 | Pending |
+| OPER-01 | Phase 1 | Pending |
+| OPER-02 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20 ⚠
+- Mapped to phases: 20
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-12*
