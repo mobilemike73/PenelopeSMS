@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01: Bootstrap the solution, host, configuration model, and test infrastructure
-- [ ] 01-02: Build the canonical SQL Server data model, normalization rules, and import-audit persistence
+- [x] 01-02: Build the canonical SQL Server data model, normalization rules, and import-audit persistence
 - [ ] 01-03: Wire the Oracle import adapter and console workflow onto the Phase 1 foundation
 
 ### Phase 2: Number Intelligence
@@ -85,7 +85,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 1/3 | In progress | 2026-03-12 |
+| 1. Data Foundation | 2/3 | In progress | 2026-03-12 |
 | 2. Number Intelligence | 0/TBD | Not started | - |
 | 3. Campaign Execution | 0/TBD | Not started | - |
 | 4. Delivery Pipeline | 0/TBD | Not started | - |
