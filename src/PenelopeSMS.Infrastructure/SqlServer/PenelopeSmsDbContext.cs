@@ -11,6 +11,10 @@ public sealed class PenelopeSmsDbContext(DbContextOptions<PenelopeSmsDbContext> 
 
     public DbSet<CustomerPhoneLink> CustomerPhoneLinks => Set<CustomerPhoneLink>();
 
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+
+    public DbSet<CampaignRecipient> CampaignRecipients => Set<CampaignRecipient>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PenelopeSmsDbContext).Assembly);

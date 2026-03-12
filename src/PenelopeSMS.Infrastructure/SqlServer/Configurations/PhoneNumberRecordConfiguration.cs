@@ -43,5 +43,9 @@ public sealed class PhoneNumberRecordConfiguration : IEntityTypeConfiguration<Ph
         builder.HasMany(phoneNumberRecord => phoneNumberRecord.CustomerPhoneLinks)
             .WithOne(customerPhoneLink => customerPhoneLink.PhoneNumberRecord)
             .HasForeignKey(customerPhoneLink => customerPhoneLink.PhoneNumberRecordId);
+
+        builder.HasMany(phoneNumberRecord => phoneNumberRecord.CampaignRecipients)
+            .WithOne(recipient => recipient.PhoneNumberRecord)
+            .HasForeignKey(recipient => recipient.PhoneNumberRecordId);
     }
 }

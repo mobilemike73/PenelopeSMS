@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PenelopeSMS.Infrastructure.SqlServer;
 
@@ -11,9 +12,11 @@ using PenelopeSMS.Infrastructure.SqlServer;
 namespace PenelopeSMS.Infrastructure.SqlServer.Migrations
 {
     [DbContext(typeof(PenelopeSmsDbContext))]
-    partial class PenelopeSmsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312233420_AddCampaignExecutionSchema")]
+    partial class AddCampaignExecutionSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

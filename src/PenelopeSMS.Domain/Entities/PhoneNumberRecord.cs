@@ -43,4 +43,6 @@ public sealed class PhoneNumberRecord
     public string? LastEnrichmentErrorMessage { get; set; }
 
     public ICollection<CustomerPhoneLink> CustomerPhoneLinks { get; } = new List<CustomerPhoneLink>();
+
+    public ICollection<CampaignRecipient> CampaignRecipients { get; } = new List<CampaignRecipient>();
 }
