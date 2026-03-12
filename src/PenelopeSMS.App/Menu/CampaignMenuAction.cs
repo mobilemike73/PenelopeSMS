@@ -1,8 +1,11 @@
 using PenelopeSMS.App.Workflows;
+using PenelopeSMS.Infrastructure.SqlServer.Repositories;
 
 namespace PenelopeSMS.App.Menu;
 
-public sealed class CampaignMenuAction(ICampaignCreationWorkflow campaignCreationWorkflow)
+public sealed class CampaignMenuAction(
+    ICampaignCreationWorkflow campaignCreationWorkflow,
+    ICampaignSendWorkflow campaignSendWorkflow)
 {
     private readonly TextReader input = Console.In;
     private readonly TextWriter output = Console.Out;
@@ -11,6 +14,7 @@ public sealed class CampaignMenuAction(ICampaignCreationWorkflow campaignCreatio
     {
         output.WriteLine("Campaigns");
         output.WriteLine("1. Create campaign draft");
+        output.WriteLine("2. Send next campaign batch");
         output.WriteLine("0. Back");
         output.Write("> ");
 
@@ -19,6 +23,12 @@ public sealed class CampaignMenuAction(ICampaignCreationWorkflow campaignCreatio
         if (selection is "0" or null)
         {
             output.WriteLine();
+            return;
+        }
+
+        if (selection == "2")
+        {
+            await SendNextBatchAsync(cancellationToken);
             return;
         }
 
@@ -60,6 +70,55 @@ public sealed class CampaignMenuAction(ICampaignCreationWorkflow campaignCreatio
                 $"Campaign draft {result.CampaignId} ({result.CampaignName}) created. Drafted: {result.DraftedRecipients}, Skipped: {result.SkippedIneligibleRecipients}, Batch size: {result.BatchSize}");
         }
         catch (Exception exception) when (exception is IOException or InvalidOperationException)
+        {
+            output.WriteLine(exception.Message);
+        }
+
+        output.WriteLine();
+    }
+
+    private async Task SendNextBatchAsync(CancellationToken cancellationToken)
+    {
+        var campaigns = await campaignSendWorkflow.ListCampaignsAsync(cancellationToken);
+        var sendableCampaigns = campaigns
+            .Where(campaign => campaign.PendingRecipients > 0)
+            .ToList();
+
+        if (sendableCampaigns.Count == 0)
+        {
+            output.WriteLine("No drafted campaigns with pending recipients were found.");
+            output.WriteLine();
+            return;
+        }
+
+        output.WriteLine("Drafted campaigns");
+
+        foreach (var campaign in sendableCampaigns)
+        {
+            output.WriteLine(
+                $"[{campaign.CampaignId}] {campaign.CampaignName} | Batch size: {campaign.BatchSize} | Pending: {campaign.PendingRecipients} | Submitted: {campaign.SubmittedRecipients} | Failed: {campaign.FailedRecipients}");
+        }
+
+        output.Write("Campaign ID to send: ");
+        var rawCampaignId = input.ReadLine();
+
+        if (!int.TryParse(rawCampaignId, out var campaignId) || campaignId <= 0)
+        {
+            output.WriteLine("Campaign ID must be a positive integer.");
+            output.WriteLine();
+            return;
+        }
+
+        try
+        {
+            var result = await campaignSendWorkflow.SendNextBatchAsync(
+                campaignId,
+                cancellationToken);
+
+            output.WriteLine(
+                $"Campaign batch sent for {result.CampaignName}. Attempted: {result.AttemptedRecipients}, Accepted: {result.AcceptedRecipients}, Failed: {result.FailedRecipients}, Remaining pending: {result.RemainingPendingRecipients}");
+        }
+        catch (InvalidOperationException exception)
         {
             output.WriteLine(exception.Message);
         }
