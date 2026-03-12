@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-03-12)
 
 **Core value:** The operator can reliably import, verify, and message eligible phone numbers while keeping campaign state and delivery outcomes accurate in the app database.
-**Current focus:** Phase 2 planning: Number Intelligence
+**Current focus:** Phase 2 planning: Number Intelligence context captured, ready for plan creation
 
 ## Current Position
 
@@ -46,6 +46,9 @@ Recent decisions affecting current work:
 - Phase 1: Use the Generic Host as the console composition root and bind Oracle, SQL Server, Twilio, and AWS settings through typed options.
 - Phase 1: Model canonical phone numbers separately from `CUST_SID` associations and store import batches as an auditable ledger.
 - Phase 1: Keep Oracle access behind an adapter and always mark import batches complete or failed for accurate audit state.
+- Phase 2: Treat only US mobile numbers as campaign-eligible, with unknown classifications marked ineligible and the latest enrichment result controlling eligibility.
+- Phase 2: Default enrichment targets never-enriched plus failed records, refreshes successful records after 30 days, and offers a separate full-refresh mode.
+- Phase 2: Store mapped Twilio facts plus the full raw payload, keep only the latest successful snapshot, and expose retry-all plus retry-selected actions for retryable failures.
 
 ### Pending Todos
 
@@ -54,10 +57,10 @@ None yet.
 ### Blockers/Concerns
 
 - Choose the public callback bridge approach before Phase 4 planning: AWS-native ingress or a small hosted ASP.NET Core bridge.
-- Finalize the app's exact "eligible for send" rule from Twilio Lookup outputs during Phase 2 planning.
+- Twilio Lookup field coverage and pricing details will need confirmation during Phase 2 research, but the product-facing eligibility rule is now defined.
 
 ## Session Continuity
 
-Last session: 2026-03-12 18:24
-Stopped at: Phase 1 complete; next step is Phase 2 planning
-Resume file: None
+Last session: 2026-03-12 18:31
+Stopped at: Phase 2 context gathered
+Resume file: .planning/phases/02-number-intelligence/02-CONTEXT.md
