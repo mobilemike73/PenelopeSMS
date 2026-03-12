@@ -23,12 +23,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Campaigns
 
-- [ ] **CAMP-01**: Operator can create a campaign from a plain-text template file stored on disk.
-- [ ] **CAMP-02**: App creates a campaign recipient list from eligible phone records only.
-- [ ] **CAMP-03**: Operator can configure the batch size used for outbound sends.
-- [ ] **CAMP-04**: App sends campaign messages through Twilio in batches and persists a message ledger row for every attempted recipient.
-- [ ] **CAMP-05**: App stores the Twilio Message SID and initial send status for every accepted outbound message.
-- [ ] **CAMP-06**: App prevents duplicate sends to the same canonical phone number within the same campaign.
+- [x] **CAMP-01**: Operator can create a campaign from a plain-text template file stored on disk.
+- [x] **CAMP-02**: App creates a campaign recipient list from eligible phone records only.
+- [x] **CAMP-03**: Operator can configure the batch size used for outbound sends.
+- [x] **CAMP-04**: App sends campaign messages through Twilio in batches and persists a message ledger row for every attempted recipient.
+- [x] **CAMP-05**: App stores the Twilio Message SID and initial send status for every accepted outbound message.
+- [x] **CAMP-06**: App prevents duplicate sends to the same canonical phone number within the same campaign.
 
 ### Monitoring
 
@@ -86,12 +86,12 @@ To be populated during roadmap creation.
 | ENRH-02 | Phase 2 | Complete |
 | ENRH-03 | Phase 2 | Complete |
 | ENRH-04 | Phase 2 | Complete |
-| CAMP-01 | Phase 3 | Pending |
-| CAMP-02 | Phase 3 | Pending |
-| CAMP-03 | Phase 3 | Pending |
-| CAMP-04 | Phase 3 | Pending |
-| CAMP-05 | Phase 3 | Pending |
-| CAMP-06 | Phase 3 | Pending |
+| CAMP-01 | Phase 3 | Complete |
+| CAMP-02 | Phase 3 | Complete |
+| CAMP-03 | Phase 3 | Complete |
+| CAMP-04 | Phase 3 | Complete |
+| CAMP-05 | Phase 3 | Complete |
+| CAMP-06 | Phase 3 | Complete |
 | MON-01 | Phase 4 | Pending |
 | MON-02 | Phase 4 | Pending |
 | MON-03 | Phase 4 | Pending |
@@ -106,4 +106,4 @@ To be populated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-12*
-*Last updated: 2026-03-12 after Phase 2 completion*
+*Last updated: 2026-03-12 after Phase 3 completion*

@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Foundation** - Create the local data model, configuration, and Oracle import pipeline.
 - [x] **Phase 2: Number Intelligence** - Enrich imported numbers with Twilio and derive campaign eligibility. (completed 2026-03-12)
-- [ ] **Phase 3: Campaign Execution** - Create campaigns from template files and send SMS in configurable batches.
+- [x] **Phase 3: Campaign Execution** - Create campaigns from template files and send SMS in configurable batches. (completed 2026-03-12)
 - [ ] **Phase 4: Delivery Pipeline** - Ingest Twilio delivery callbacks through the callback pipeline and update message history.
 - [ ] **Phase 5: Operator Monitoring** - Surface campaign progress, job visibility, and operational hardening in the console app.
 
@@ -64,9 +64,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Add the campaign ledger schema plus template and Twilio send foundations
-- [ ] 03-02: Build campaign drafting from plain-text templates and eligible recipient materialization
-- [ ] 03-03: Send drafted campaigns in configured batches and persist initial Twilio results
+- [x] 03-01: Add the campaign ledger schema plus template and Twilio send foundations
+- [x] 03-02: Build campaign drafting from plain-text templates and eligible recipient materialization
+- [x] 03-03: Send drafted campaigns in configured batches and persist initial Twilio results
 
 ### Phase 4: Delivery Pipeline
 **Goal**: Deliver asynchronous delivery-result ingestion from Twilio callbacks through AWS SQS into the local database.
@@ -97,6 +97,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete | 2026-03-12 |
 | 2. Number Intelligence | 3/3 | Complete | 2026-03-12 |
-| 3. Campaign Execution | 0/3 | Planned | - |
+| 3. Campaign Execution | 3/3 | Complete | 2026-03-12 |
 | 4. Delivery Pipeline | 0/TBD | Not started | - |
 | 5. Operator Monitoring | 0/TBD | Not started | - |
