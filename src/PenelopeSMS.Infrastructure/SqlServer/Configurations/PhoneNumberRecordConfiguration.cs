@@ -16,6 +16,27 @@ public sealed class PhoneNumberRecordConfiguration : IEntityTypeConfiguration<Ph
             .HasMaxLength(32)
             .IsRequired();
 
+        builder.Property(phoneNumberRecord => phoneNumberRecord.TwilioCountryCode)
+            .HasMaxLength(8);
+
+        builder.Property(phoneNumberRecord => phoneNumberRecord.TwilioLineType)
+            .HasMaxLength(32);
+
+        builder.Property(phoneNumberRecord => phoneNumberRecord.TwilioCarrierName)
+            .HasMaxLength(256);
+
+        builder.Property(phoneNumberRecord => phoneNumberRecord.TwilioMobileCountryCode)
+            .HasMaxLength(8);
+
+        builder.Property(phoneNumberRecord => phoneNumberRecord.TwilioMobileNetworkCode)
+            .HasMaxLength(8);
+
+        builder.Property(phoneNumberRecord => phoneNumberRecord.LastEnrichmentErrorCode)
+            .HasMaxLength(64);
+
+        builder.Property(phoneNumberRecord => phoneNumberRecord.LastEnrichmentErrorMessage)
+            .HasMaxLength(1024);
+
         builder.HasIndex(phoneNumberRecord => phoneNumberRecord.CanonicalPhoneNumber)
             .IsUnique();
 
