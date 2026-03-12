@@ -45,7 +45,7 @@ public static class Program
             .AddOptions<AwsOptions>()
             .BindConfiguration(AwsOptions.SectionName);
 
-        builder.Services.AddInfrastructure();
+        builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddSingleton<MainMenu>();
     }
 }
