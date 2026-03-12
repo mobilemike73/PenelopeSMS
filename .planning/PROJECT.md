@@ -28,6 +28,7 @@ The operator can reliably import, verify, and message eligible phone numbers whi
 - Graphical UI beyond a basic console menu — a console workflow is sufficient for v1.
 - Personalized or variable-substituted message templates — v1 sends plain-text content only.
 - Cross-platform support — the app is explicitly Windows-only.
+- Twilio sender provisioning or 10DLC setup — these are already completed outside the app.
 
 ## Context
 
@@ -38,6 +39,8 @@ Expected data volume is roughly 70,000 phone numbers. Imports should support glo
 All imported numbers are considered eligible from a business-rules perspective; Twilio-driven phone intelligence determines whether a number is mobile and SMS-capable. The operator wants to store carrier information and any other useful low-cost metadata returned by the Twilio query.
 
 Campaigns send plain-text SMS messages loaded from a template file in configurable batch sizes. Delivery status should flow back into the database automatically rather than by polling every message SID individually.
+
+Twilio provisioning is not part of this project's v1 scope. The Twilio account is already 10DLC verified and the necessary campaigns are already created and approved.
 
 ## Constraints
 
@@ -58,6 +61,7 @@ Campaigns send plain-text SMS messages loaded from a template file in configurab
 | Treat Twilio phone intelligence as an enrichment/eligibility step before campaign sends | Campaign targeting depends on excluding non-mobile or non-SMS-capable numbers | — Pending |
 | Prefer asynchronous delivery updates over per-message polling | Reduces operational overhead and avoids querying every message SID individually | — Pending |
 | Re-evaluate whether Twilio Lookup, rather than Verify, is the correct service for phone type and carrier intelligence | The stated goal is number classification/enrichment, which may not match Verify's primary purpose | — Pending |
+| Exclude Twilio sender provisioning from app scope | The account is already 10DLC verified with approved campaigns, so the app should focus on import, enrichment, sending, and monitoring | — Pending |
 
 ---
-*Last updated: 2026-03-12 after initialization*
+*Last updated: 2026-03-12 after scope adjustment*

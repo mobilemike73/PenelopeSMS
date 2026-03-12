@@ -11,7 +11,7 @@ PenelopeSMS fits a well-understood pattern: keep operator workflows and operatio
 
 The main technical correction from research is that Twilio Verify is not the right product for classifying imported phone numbers. Twilio Lookup with `line_type_intelligence` is the low-cost official option for carrier and line-type intelligence. That said, Lookup line type is not the same thing as guaranteed SMS reachability, so the roadmap should keep delivery evidence and reconciliation in scope instead of treating Lookup as perfect truth.
 
-The main launch risks are sender readiness and callback integrity. US marketing traffic requires Twilio sender strategy and likely A2P 10DLC registration if 10DLC numbers are used, and callback handling must validate signatures and process duplicate events safely.
+The main launch risk is callback integrity. Twilio sender provisioning is already complete for this project, so the remaining operational concern is making callback ingestion secure, durable, and idempotent.
 
 ## Key Findings
 
@@ -62,9 +62,8 @@ The architecture should separate local workflow orchestration from public callba
 
 1. **Using Verify instead of Lookup** — use Twilio Lookup for line intelligence and keep Verify out of this MVP
 2. **Treating Lookup as perfect SMS-capable truth** — store provider facts separately from derived eligibility and delivery evidence
-3. **Ignoring A2P 10DLC / sender setup** — sender registration and Messaging Service setup are launch dependencies, not cleanup tasks
-4. **Skipping webhook validation and idempotency** — validate signatures and tolerate duplicate callbacks
-5. **Polling every SID** — use callbacks first, then reconcile unresolved statuses later
+3. **Skipping webhook validation and idempotency** — validate signatures and tolerate duplicate callbacks
+4. **Polling every SID** — use callbacks first, then reconcile unresolved statuses later
 
 ## Implications for Roadmap
 
@@ -130,7 +129,6 @@ Phases with standard patterns (skip research-phase):
 
 - **Exact SMS-capable rule:** lowest-cost Twilio Lookup data gives line type and carrier, not a perfect SMS-capable guarantee; finalize the app's eligibility rule during planning.
 - **Callback bridge deployment choice:** decide between AWS-native ingress only versus a small self-hosted ASP.NET Core bridge.
-- **Sender strategy:** choose 10DLC versus toll-free and handle the corresponding Twilio registration work before launch.
 
 ## Sources
 
