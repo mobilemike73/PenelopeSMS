@@ -48,7 +48,9 @@ public static class Program
             .BindConfiguration(AwsOptions.SectionName);
 
         builder.Services.AddInfrastructure(builder.Configuration);
+        builder.Services.AddScoped<IEnrichmentWorkflow, EnrichmentWorkflow>();
         builder.Services.AddScoped<IImportWorkflow, ImportWorkflow>();
+        builder.Services.AddScoped<EnrichmentMenuAction>();
         builder.Services.AddScoped<ImportMenuAction>();
         builder.Services.AddScoped<MainMenu>();
     }

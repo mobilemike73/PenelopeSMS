@@ -1,6 +1,8 @@
 namespace PenelopeSMS.App.Menu;
 
-public sealed class MainMenu(ImportMenuAction importMenuAction)
+public sealed class MainMenu(
+    ImportMenuAction importMenuAction,
+    EnrichmentMenuAction enrichmentMenuAction)
 {
     private readonly TextReader input = Console.In;
     private readonly TextWriter output = Console.Out;
@@ -14,6 +16,7 @@ public sealed class MainMenu(ImportMenuAction importMenuAction)
         {
             output.WriteLine("PenelopeSMS");
             output.WriteLine("1. Import phone numbers");
+            output.WriteLine("2. Enrich phone numbers");
             output.WriteLine("0. Exit");
             output.Write("> ");
 
@@ -23,6 +26,9 @@ public sealed class MainMenu(ImportMenuAction importMenuAction)
             {
                 case "1":
                     await importMenuAction.ExecuteAsync(cancellationToken);
+                    break;
+                case "2":
+                    await enrichmentMenuAction.ExecuteAsync(cancellationToken);
                     break;
                 case "0":
                 case null:
