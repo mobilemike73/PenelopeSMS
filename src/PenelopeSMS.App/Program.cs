@@ -50,9 +50,11 @@ public static class Program
 
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddScoped<IPlainTextTemplateLoader, FilePlainTextTemplateLoader>();
+        builder.Services.AddScoped<ICampaignCreationWorkflow, CampaignCreationWorkflow>();
         builder.Services.AddScoped<IEnrichmentWorkflow, EnrichmentWorkflow>();
         builder.Services.AddScoped<IEnrichmentRetryWorkflow, EnrichmentRetryWorkflow>();
         builder.Services.AddScoped<IImportWorkflow, ImportWorkflow>();
+        builder.Services.AddScoped<CampaignMenuAction>();
         builder.Services.AddScoped<EnrichmentFailureMenuAction>();
         builder.Services.AddScoped<EnrichmentMenuAction>();
         builder.Services.AddScoped<ImportMenuAction>();
