@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PenelopeSMS.App.Menu;
 using PenelopeSMS.App.Options;
+using PenelopeSMS.App.Templates;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.Infrastructure;
 
@@ -48,6 +49,7 @@ public static class Program
             .BindConfiguration(AwsOptions.SectionName);
 
         builder.Services.AddInfrastructure(builder.Configuration);
+        builder.Services.AddScoped<IPlainTextTemplateLoader, FilePlainTextTemplateLoader>();
         builder.Services.AddScoped<IEnrichmentWorkflow, EnrichmentWorkflow>();
         builder.Services.AddScoped<IEnrichmentRetryWorkflow, EnrichmentRetryWorkflow>();
         builder.Services.AddScoped<IImportWorkflow, ImportWorkflow>();

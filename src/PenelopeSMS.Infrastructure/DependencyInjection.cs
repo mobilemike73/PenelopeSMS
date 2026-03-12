@@ -3,8 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PenelopeSMS.Domain.Services;
 using PenelopeSMS.Infrastructure.Oracle;
-using PenelopeSMS.Infrastructure.SqlServer.Queries;
 using PenelopeSMS.Infrastructure.SqlServer;
+using PenelopeSMS.Infrastructure.SqlServer.Queries;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
 using PenelopeSMS.Infrastructure.Twilio;
 
@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<FailedEnrichmentReviewQuery>();
         services.AddScoped<PhoneNumberEnrichmentRepository>();
         services.AddScoped<ITwilioLookupClient, TwilioLookupClient>();
+        services.AddScoped<ITwilioMessageSender, TwilioMessageSender>();
         services.AddScoped<IOraclePhoneImportReader, OraclePhoneImportReader>();
         services.AddSingleton<IPhoneNumberNormalizer, PhoneNumberNormalizer>();
 
