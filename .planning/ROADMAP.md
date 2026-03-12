@@ -45,7 +45,12 @@ Plans:
   2. Each enriched phone record stores line type, carrier, enrichment timestamp, and provider payload or equivalent mapped data.
   3. Eligibility for campaigns is derived from stored enrichment data without losing the original provider facts.
   4. Failed enrichment attempts are visible with retry-relevant error details.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 02-01: Add the enrichment snapshot schema and Twilio Lookup adapter foundation
+- [ ] 02-02: Build the default/full-refresh enrichment workflow and due-record targeting
+- [ ] 02-03: Add failed-record review plus retry-all and retry-selected actions
 
 ### Phase 3: Campaign Execution
 **Goal**: Deliver campaign creation and batched outbound messaging using eligible phone records only.
@@ -86,7 +91,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete | 2026-03-12 |
-| 2. Number Intelligence | 0/TBD | Not started | - |
+| 2. Number Intelligence | 0/3 | Planned | - |
 | 3. Campaign Execution | 0/TBD | Not started | - |
 | 4. Delivery Pipeline | 0/TBD | Not started | - |
 | 5. Operator Monitoring | 0/TBD | Not started | - |
