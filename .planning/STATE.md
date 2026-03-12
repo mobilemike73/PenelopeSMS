@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-03-12)
 ## Current Position
 
 Phase: 2 of 5 (Number Intelligence)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-03-12 — Completed plan 02-01 with enrichment schema, Twilio adapter, and eligibility tests
+Last activity: 2026-03-12 — Completed plan 02-02 with enrichment workflow, due-record targeting, and SQLite workflow coverage
 
-Progress: [███░░░░░░░] 33%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 3 min
 - Total execution time: 0.2 hours
 
@@ -28,10 +28,10 @@ Progress: [███░░░░░░░] 33%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 3 | 7 min | 2 min |
-| 2 | 1 | 4 min | 4 min |
+| 2 | 2 | 6 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01, 01-02, 01-03, 02-01
+- Last 5 plans: 01-01, 01-02, 01-03, 02-01, 02-02
 - Trend: Stable
 
 ## Accumulated Context
@@ -51,6 +51,7 @@ Recent decisions affecting current work:
 - Phase 2: Default enrichment targets never-enriched plus failed records, refreshes successful records after 30 days, and offers a separate full-refresh mode.
 - Phase 2: Store mapped Twilio facts plus the full raw payload, keep only the latest successful snapshot, and expose retry-all plus retry-selected actions for retryable failures.
 - Phase 2 Plan 02-01: Keep the Twilio SDK isolated behind `ITwilioLookupClient` and store retryability plus derived eligibility on the canonical phone record.
+- Phase 2 Plan 02-02: Keep due-record selection in a dedicated query and preserve the last successful snapshot when a newer lookup fails.
 
 ### Pending Todos
 
@@ -63,6 +64,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12 18:48
-Stopped at: Phase 2 plan 02-01 complete; ready to execute 02-02
-Resume file: .planning/phases/02-number-intelligence/02-02-PLAN.md
+Last session: 2026-03-12 18:53
+Stopped at: Phase 2 plan 02-02 complete; ready to execute 02-03
+Resume file: .planning/phases/02-number-intelligence/02-03-PLAN.md
