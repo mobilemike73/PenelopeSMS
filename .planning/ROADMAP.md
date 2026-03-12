@@ -13,7 +13,7 @@ PenelopeSMS will move from local data foundation to end-to-end SMS campaign exec
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Foundation** - Create the local data model, configuration, and Oracle import pipeline.
-- [ ] **Phase 2: Number Intelligence** - Enrich imported numbers with Twilio and derive campaign eligibility.
+- [x] **Phase 2: Number Intelligence** - Enrich imported numbers with Twilio and derive campaign eligibility. (completed 2026-03-12)
 - [ ] **Phase 3: Campaign Execution** - Create campaigns from template files and send SMS in configurable batches.
 - [ ] **Phase 4: Delivery Pipeline** - Ingest Twilio delivery callbacks through the callback pipeline and update message history.
 - [ ] **Phase 5: Operator Monitoring** - Surface campaign progress, job visibility, and operational hardening in the console app.
@@ -50,7 +50,7 @@ Plans:
 Plans:
 - [x] 02-01: Add the enrichment snapshot schema and Twilio Lookup adapter foundation
 - [x] 02-02: Build the default/full-refresh enrichment workflow and due-record targeting
-- [ ] 02-03: Add failed-record review plus retry-all and retry-selected actions
+- [x] 02-03: Add failed-record review plus retry-all and retry-selected actions
 
 ### Phase 3: Campaign Execution
 **Goal**: Deliver campaign creation and batched outbound messaging using eligible phone records only.
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete | 2026-03-12 |
-| 2. Number Intelligence | 2/3 | In Progress|  |
+| 2. Number Intelligence | 3/3 | Complete | 2026-03-12 |
 | 3. Campaign Execution | 0/TBD | Not started | - |
 | 4. Delivery Pipeline | 0/TBD | Not started | - |
 | 5. Operator Monitoring | 0/TBD | Not started | - |

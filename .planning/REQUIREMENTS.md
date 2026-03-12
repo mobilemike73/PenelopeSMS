@@ -16,10 +16,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Enrichment
 
-- [ ] **ENRH-01**: Operator can run Twilio number enrichment for imported phone records that have not yet been enriched or are due for refresh.
-- [ ] **ENRH-02**: App stores Twilio line type, carrier, country code, last enriched timestamp, and raw provider payload or mapped equivalent for each enriched phone record.
-- [ ] **ENRH-03**: App derives a campaign-eligibility flag from stored enrichment data without overwriting the original provider facts.
-- [ ] **ENRH-04**: App records enrichment failures, error details, and retry status per phone record.
+- [x] **ENRH-01**: Operator can run Twilio number enrichment for imported phone records that have not yet been enriched or are due for refresh.
+- [x] **ENRH-02**: App stores Twilio line type, carrier, country code, last enriched timestamp, and raw provider payload or mapped equivalent for each enriched phone record.
+- [x] **ENRH-03**: App derives a campaign-eligibility flag from stored enrichment data without overwriting the original provider facts.
+- [x] **ENRH-04**: App records enrichment failures, error details, and retry status per phone record.
 
 ### Campaigns
 
@@ -82,10 +82,10 @@ To be populated during roadmap creation.
 | IMPT-02 | Phase 1 | Pending |
 | IMPT-03 | Phase 1 | Pending |
 | IMPT-04 | Phase 1 | Pending |
-| ENRH-01 | Phase 2 | Pending |
-| ENRH-02 | Phase 2 | Pending |
-| ENRH-03 | Phase 2 | Pending |
-| ENRH-04 | Phase 2 | Pending |
+| ENRH-01 | Phase 2 | Complete |
+| ENRH-02 | Phase 2 | Complete |
+| ENRH-03 | Phase 2 | Complete |
+| ENRH-04 | Phase 2 | Complete |
 | CAMP-01 | Phase 3 | Pending |
 | CAMP-02 | Phase 3 | Pending |
 | CAMP-03 | Phase 3 | Pending |
@@ -106,4 +106,4 @@ To be populated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-12*
-*Last updated: 2026-03-12 after scope adjustment*
+*Last updated: 2026-03-12 after Phase 2 completion*
