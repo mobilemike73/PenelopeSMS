@@ -61,7 +61,12 @@ Plans:
   2. Campaign recipient selection excludes ineligible numbers and duplicate sends within the same campaign.
   3. Operator can choose a batch size and send the campaign in controlled batches.
   4. Every accepted outbound message stores a Twilio Message SID and initial send status in the local database.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 03-01: Add the campaign ledger schema plus template and Twilio send foundations
+- [ ] 03-02: Build campaign drafting from plain-text templates and eligible recipient materialization
+- [ ] 03-03: Send drafted campaigns in configured batches and persist initial Twilio results
 
 ### Phase 4: Delivery Pipeline
 **Goal**: Deliver asynchronous delivery-result ingestion from Twilio callbacks through AWS SQS into the local database.
@@ -92,6 +97,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete | 2026-03-12 |
 | 2. Number Intelligence | 3/3 | Complete | 2026-03-12 |
-| 3. Campaign Execution | 0/TBD | Not started | - |
+| 3. Campaign Execution | 0/3 | Planned | - |
 | 4. Delivery Pipeline | 0/TBD | Not started | - |
 | 5. Operator Monitoring | 0/TBD | Not started | - |
