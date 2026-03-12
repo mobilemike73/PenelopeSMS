@@ -16,7 +16,7 @@ public sealed class MainMenu(
         {
             output.WriteLine("PenelopeSMS");
             output.WriteLine("1. Import phone numbers");
-            output.WriteLine("2. Enrich phone numbers");
+            output.WriteLine("2. Enrich or retry phone numbers");
             output.WriteLine("0. Exit");
             output.Write("> ");
 

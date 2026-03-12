@@ -34,6 +34,7 @@ public static class DependencyInjection
 
         services.AddScoped<ImportPersistenceService>();
         services.AddScoped<EnrichmentTargetingQuery>();
+        services.AddScoped<FailedEnrichmentReviewQuery>();
         services.AddScoped<PhoneNumberEnrichmentRepository>();
         services.AddScoped<ITwilioLookupClient, TwilioLookupClient>();
         services.AddScoped<IOraclePhoneImportReader, OraclePhoneImportReader>();

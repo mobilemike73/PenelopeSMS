@@ -49,7 +49,9 @@ public static class Program
 
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddScoped<IEnrichmentWorkflow, EnrichmentWorkflow>();
+        builder.Services.AddScoped<IEnrichmentRetryWorkflow, EnrichmentRetryWorkflow>();
         builder.Services.AddScoped<IImportWorkflow, ImportWorkflow>();
+        builder.Services.AddScoped<EnrichmentFailureMenuAction>();
         builder.Services.AddScoped<EnrichmentMenuAction>();
         builder.Services.AddScoped<ImportMenuAction>();
         builder.Services.AddScoped<MainMenu>();

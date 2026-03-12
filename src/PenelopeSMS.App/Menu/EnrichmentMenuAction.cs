@@ -2,7 +2,9 @@ using PenelopeSMS.App.Workflows;
 
 namespace PenelopeSMS.App.Menu;
 
-public sealed class EnrichmentMenuAction(IEnrichmentWorkflow enrichmentWorkflow)
+public sealed class EnrichmentMenuAction(
+    IEnrichmentWorkflow enrichmentWorkflow,
+    EnrichmentFailureMenuAction enrichmentFailureMenuAction)
 {
     private readonly TextReader input = Console.In;
     private readonly TextWriter output = Console.Out;
@@ -12,6 +14,7 @@ public sealed class EnrichmentMenuAction(IEnrichmentWorkflow enrichmentWorkflow)
         output.WriteLine("Run phone enrichment");
         output.WriteLine("1. Default due-record refresh");
         output.WriteLine("2. Full refresh");
+        output.WriteLine("3. Review failed enrichments");
         output.WriteLine("0. Cancel");
         output.Write("> ");
 
@@ -20,6 +23,12 @@ public sealed class EnrichmentMenuAction(IEnrichmentWorkflow enrichmentWorkflow)
         if (selection is "0" or null)
         {
             output.WriteLine();
+            return;
+        }
+
+        if (selection == "3")
+        {
+            await enrichmentFailureMenuAction.ExecuteAsync(cancellationToken);
             return;
         }
 
