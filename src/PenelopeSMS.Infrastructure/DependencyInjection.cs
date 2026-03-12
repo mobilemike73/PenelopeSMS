@@ -5,6 +5,7 @@ using PenelopeSMS.Domain.Services;
 using PenelopeSMS.Infrastructure.Oracle;
 using PenelopeSMS.Infrastructure.SqlServer;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
+using PenelopeSMS.Infrastructure.Twilio;
 
 namespace PenelopeSMS.Infrastructure;
 
@@ -31,6 +32,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<ImportPersistenceService>();
+        services.AddScoped<ITwilioLookupClient, TwilioLookupClient>();
         services.AddScoped<IOraclePhoneImportReader, OraclePhoneImportReader>();
         services.AddSingleton<IPhoneNumberNormalizer, PhoneNumberNormalizer>();
 
