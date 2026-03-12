@@ -14,8 +14,8 @@ public sealed class HostBootstrapTests
     public void BuildHostResolvesMainMenuWithoutExternalCredentials()
     {
         using var host = CreateHost();
-
-        var menu = host.Services.GetRequiredService<MainMenu>();
+        using var scope = host.Services.CreateScope();
+        var menu = scope.ServiceProvider.GetRequiredService<MainMenu>();
 
         Assert.NotNull(menu);
     }
