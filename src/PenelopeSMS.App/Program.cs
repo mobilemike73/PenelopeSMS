@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PenelopeSMS.App.Menu;
 using PenelopeSMS.App.Options;
+using PenelopeSMS.App.Workflows;
 using PenelopeSMS.Infrastructure;
 
 namespace PenelopeSMS.App;
@@ -11,7 +12,8 @@ public static class Program
     public static async Task<int> Main(string[] args)
     {
         using var host = BuildHost(args);
-        await host.Services.GetRequiredService<MainMenu>().RunAsync();
+        using var scope = host.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<MainMenu>().RunAsync();
         return 0;
     }
 
@@ -46,6 +48,8 @@ public static class Program
             .BindConfiguration(AwsOptions.SectionName);
 
         builder.Services.AddInfrastructure(builder.Configuration);
-        builder.Services.AddSingleton<MainMenu>();
+        builder.Services.AddScoped<IImportWorkflow, ImportWorkflow>();
+        builder.Services.AddScoped<ImportMenuAction>();
+        builder.Services.AddScoped<MainMenu>();
     }
 }

@@ -113,6 +113,26 @@ public sealed class ImportPersistenceService(PenelopeSmsDbContext dbContext)
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task FailBatchAsync(
+        int importBatchId,
+        int rowsRead,
+        int rowsImported,
+        int rowsRejected,
+        CancellationToken cancellationToken = default)
+    {
+        var importBatch = await dbContext.ImportBatches
+            .SingleOrDefaultAsync(batch => batch.Id == importBatchId, cancellationToken)
+            ?? throw new InvalidOperationException($"Import batch {importBatchId} was not found.");
+
+        importBatch.RowsRead = rowsRead;
+        importBatch.RowsImported = rowsImported;
+        importBatch.RowsRejected = rowsRejected;
+        importBatch.CompletedAtUtc = DateTime.UtcNow;
+        importBatch.Status = ImportBatch.FailedStatus;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }
 
 public sealed record PersistPhoneNumberResult(
