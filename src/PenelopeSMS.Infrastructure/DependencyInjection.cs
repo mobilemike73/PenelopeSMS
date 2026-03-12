@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PenelopeSMS.Domain.Services;
+using PenelopeSMS.Infrastructure.Oracle;
 using PenelopeSMS.Infrastructure.SqlServer;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
 
@@ -30,6 +31,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<ImportPersistenceService>();
+        services.AddScoped<IOraclePhoneImportReader, OraclePhoneImportReader>();
         services.AddSingleton<IPhoneNumberNormalizer, PhoneNumberNormalizer>();
 
         return services;
