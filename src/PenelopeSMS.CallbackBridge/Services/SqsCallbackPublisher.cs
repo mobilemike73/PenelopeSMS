@@ -42,12 +42,33 @@ public sealed class SqsCallbackPublisher
         }
 
         using var sqsClient = new AmazonSQSClient(Amazon.RegionEndpoint.GetBySystemName(region));
-        var messageBody = System.Text.Json.JsonSerializer.Serialize(envelope);
+        await sqsClient.SendMessageAsync(
+            CreateSendMessageRequest(queueUrl, envelope),
+            cancellationToken);
+    }
 
-        await sqsClient.SendMessageAsync(new SendMessageRequest
+    internal static SendMessageRequest CreateSendMessageRequest(
+        string queueUrl,
+        TwilioCallbackEnvelope envelope)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(queueUrl);
+        ArgumentNullException.ThrowIfNull(envelope);
+
+        var request = new SendMessageRequest
         {
             QueueUrl = queueUrl,
-            MessageBody = messageBody
-        }, cancellationToken);
+            MessageBody = System.Text.Json.JsonSerializer.Serialize(envelope)
+        };
+
+        if (!queueUrl.EndsWith(".fifo", StringComparison.OrdinalIgnoreCase))
+        {
+            return request;
+        }
+
+        request.MessageGroupId = string.IsNullOrWhiteSpace(envelope.MessageSid)
+            ? envelope.EnvelopeType
+            : envelope.MessageSid;
+        request.MessageDeduplicationId = Guid.NewGuid().ToString("N");
+        return request;
     }
 }
