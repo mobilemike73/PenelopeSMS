@@ -1,5 +1,5 @@
 {
-  "profile": "",
+  "profile": "default",
   "region": "us-east-1",
   "configuration": "Release",
   "framework": "net8.0",

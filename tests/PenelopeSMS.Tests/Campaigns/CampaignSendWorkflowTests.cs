@@ -94,14 +94,37 @@ public sealed class CampaignSendWorkflowTests
         Assert.NotNull(campaign.CompletedAtUtc);
     }
 
+    [Fact]
+    public async Task SendNextBatchAsyncWritesVerboseFailureDetails()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        await SeedCampaignAsync(database.DbContext, markFirstRecipientSubmitted: true);
+        var sender = new FakeTwilioMessageSender((phoneNumber, _) =>
+        {
+            return Task.FromResult(phoneNumber == "+16502530001"
+                ? TwilioSendResult.Failure("21610", "Message cannot be sent.")
+                : TwilioSendResult.Success("SM-final", "queued"));
+        });
+        var output = new StringWriter();
+        var workflow = CreateWorkflow(database.DbContext, sender, output);
+
+        await workflow.SendNextBatchAsync(1);
+
+        var consoleText = output.ToString();
+        Assert.Contains("Send failed for +16502530001: 21610 | Message cannot be sent.", consoleText);
+        Assert.Contains("Sent to +16502530002: accepted as queued", consoleText);
+    }
+
     private static CampaignSendWorkflow CreateWorkflow(
         PenelopeSmsDbContext dbContext,
-        ITwilioMessageSender twilioMessageSender)
+        ITwilioMessageSender twilioMessageSender,
+        TextWriter? output = null)
     {
         return new CampaignSendWorkflow(
             new CampaignSendBatchQuery(dbContext),
             new CampaignSendRepository(dbContext),
-            twilioMessageSender);
+            twilioMessageSender,
+            runtimeOutput: output);
     }
 
     private static async Task SeedCampaignAsync(

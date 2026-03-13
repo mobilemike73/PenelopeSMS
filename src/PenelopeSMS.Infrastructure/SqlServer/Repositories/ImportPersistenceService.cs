@@ -154,12 +154,12 @@ public sealed class ImportPersistenceService(PenelopeSmsDbContext dbContext)
         {
             await dbContext.Database.ExecuteSqlRawAsync(
                 """
-                DBCC CHECKIDENT ('CampaignRecipientStatusHistory', RESEED, 0);
-                DBCC CHECKIDENT ('CampaignRecipients', RESEED, 0);
-                DBCC CHECKIDENT ('Campaigns', RESEED, 0);
-                DBCC CHECKIDENT ('CustomerPhoneLinks', RESEED, 0);
-                DBCC CHECKIDENT ('PhoneNumberRecords', RESEED, 0);
-                DBCC CHECKIDENT ('ImportBatches', RESEED, 0);
+                DBCC CHECKIDENT ('CampaignRecipientStatusHistory', RESEED, 1);
+                DBCC CHECKIDENT ('CampaignRecipients', RESEED, 1);
+                DBCC CHECKIDENT ('Campaigns', RESEED, 1);
+                DBCC CHECKIDENT ('CustomerPhoneLinks', RESEED, 1);
+                DBCC CHECKIDENT ('PhoneNumberRecords', RESEED, 1);
+                DBCC CHECKIDENT ('ImportBatches', RESEED, 1);
                 """,
                 cancellationToken);
         }

@@ -9,9 +9,11 @@ public sealed class CampaignSendWorkflow(
     CampaignSendBatchQuery campaignSendBatchQuery,
     CampaignSendRepository campaignSendRepository,
     ITwilioMessageSender twilioMessageSender,
-    IOperationsMonitor? runtimeOperationsMonitor = null) : ICampaignSendWorkflow
+    IOperationsMonitor? runtimeOperationsMonitor = null,
+    TextWriter? runtimeOutput = null) : ICampaignSendWorkflow
 {
     private readonly IOperationsMonitor operationsMonitor = runtimeOperationsMonitor ?? NullOperationsMonitor.Instance;
+    private readonly TextWriter output = runtimeOutput ?? Console.Out;
 
     public async Task<IReadOnlyList<CampaignSendSummaryRecord>> ListCampaignsAsync(
         CancellationToken cancellationToken = default)
@@ -53,10 +55,14 @@ public sealed class CampaignSendWorkflow(
             if (sendResult.IsSuccess)
             {
                 acceptedRecipients++;
+                output.WriteLine(
+                    $"Sent to {recipient.CanonicalPhoneNumber}: accepted as {sendResult.InitialStatus ?? "submitted"} (SID: {sendResult.MessageSid ?? "n/a"}).");
             }
             else
             {
                 failedRecipients++;
+                output.WriteLine(
+                    $"Send failed for {recipient.CanonicalPhoneNumber}: {sendResult.ErrorCode ?? "no-code"} | {sendResult.ErrorMessage ?? "Unknown provider error"}");
                 operationsMonitor.Warn(
                     OperationType.CampaignSend,
                     $"Campaign send failed for {recipient.CanonicalPhoneNumber}: {sendResult.ErrorMessage ?? sendResult.ErrorCode ?? "Unknown provider error"}",
