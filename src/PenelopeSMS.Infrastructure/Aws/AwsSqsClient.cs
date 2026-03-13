@@ -1,5 +1,6 @@
 using Amazon;
 using Amazon.Runtime;
+using Amazon.Runtime.CredentialManagement;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Microsoft.Extensions.Configuration;
@@ -17,13 +18,31 @@ public sealed class AwsSqsClient : IAwsSqsClient, IDisposable
         ArgumentNullException.ThrowIfNull(configuration);
 
         var region = configuration["Aws:Region"] ?? "us-east-1";
+        var profile = configuration["Aws:Profile"];
         var accessKeyId = configuration["Aws:AccessKeyId"];
         var secretAccessKey = configuration["Aws:SecretAccessKey"];
         var regionEndpoint = RegionEndpoint.GetBySystemName(region);
 
-        sqsClient = string.IsNullOrWhiteSpace(accessKeyId) || string.IsNullOrWhiteSpace(secretAccessKey)
-            ? new AmazonSQSClient(regionEndpoint)
-            : new AmazonSQSClient(new BasicAWSCredentials(accessKeyId, secretAccessKey), regionEndpoint);
+        if (!string.IsNullOrWhiteSpace(accessKeyId) && !string.IsNullOrWhiteSpace(secretAccessKey))
+        {
+            sqsClient = new AmazonSQSClient(new BasicAWSCredentials(accessKeyId, secretAccessKey), regionEndpoint);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(profile))
+        {
+            var profileStore = new CredentialProfileStoreChain();
+
+            if (!profileStore.TryGetAWSCredentials(profile, out var profileCredentials))
+            {
+                throw new InvalidOperationException($"AWS profile '{profile}' was not found.");
+            }
+
+            sqsClient = new AmazonSQSClient(profileCredentials, regionEndpoint);
+            return;
+        }
+
+        sqsClient = new AmazonSQSClient(regionEndpoint);
     }
 
     internal AwsSqsClient(AmazonSQSClient sqsClient)
@@ -45,7 +64,7 @@ public sealed class AwsSqsClient : IAwsSqsClient, IDisposable
             VisibilityTimeout = VisibilityTimeoutSeconds
         }, cancellationToken);
 
-        var message = response.Messages.SingleOrDefault();
+        var message = response.Messages?.SingleOrDefault();
 
         return message is null
             ? null

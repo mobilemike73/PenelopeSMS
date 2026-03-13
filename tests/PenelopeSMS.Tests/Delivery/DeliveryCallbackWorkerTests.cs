@@ -75,6 +75,28 @@ public sealed class DeliveryCallbackWorkerTests
         Assert.Equal(0, sqsClient.DeleteCalls);
     }
 
+    [Fact]
+    public async Task ExecuteOnceHandlesReceiveFailuresWithoutThrowing()
+    {
+        var sqsClient = new ThrowingAwsSqsClient();
+        var worker = new DeliveryCallbackWorker(
+            sqsClient,
+            Options.Create(new AwsOptions
+            {
+                CallbackQueueUrl = "https://sqs.example.com/queue"
+            }),
+            (_, _) => Task.FromResult(new DeliveryCallbackProcessingResult(
+                ShouldDeleteMessage: true,
+                Outcome: "applied",
+                ConsoleMessage: "applied")),
+            new OperationsMonitor(),
+            TextWriter.Null);
+
+        await worker.ProcessSingleIterationAsync();
+
+        Assert.Equal(0, sqsClient.DeleteCalls);
+    }
+
     private sealed class FakeAwsSqsClient(SqsQueueMessage? nextMessage) : IAwsSqsClient
     {
         public int DeleteCalls { get; private set; }
@@ -93,4 +115,19 @@ public sealed class DeliveryCallbackWorkerTests
         }
     }
 
+    private sealed class ThrowingAwsSqsClient : IAwsSqsClient
+    {
+        public int DeleteCalls { get; private set; }
+
+        public Task<SqsQueueMessage?> ReceiveMessageAsync(string queueUrl, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("receive failed");
+        }
+
+        public Task DeleteMessageAsync(string queueUrl, string receiptHandle, CancellationToken cancellationToken = default)
+        {
+            DeleteCalls++;
+            return Task.CompletedTask;
+        }
+    }
 }

@@ -10,6 +10,7 @@ namespace PenelopeSMS.App.Services;
 
 public sealed class DeliveryCallbackWorker : BackgroundService
 {
+    private static readonly TimeSpan ReceiveFailureDelay = TimeSpan.FromSeconds(5);
     private readonly IAwsSqsClient awsSqsClient;
     private readonly IOptions<AwsOptions> awsOptions;
     private readonly Func<SqsQueueMessage, CancellationToken, Task<DeliveryCallbackProcessingResult>> processMessageAsync;
@@ -77,7 +78,25 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         }
 
         EnsureJobStarted();
-        var message = await awsSqsClient.ReceiveMessageAsync(queueUrl, stoppingToken);
+        SqsQueueMessage? message;
+
+        try
+        {
+            message = await awsSqsClient.ReceiveMessageAsync(queueUrl, stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            var warningMessage = $"Warning: delivery callback receive failed: {exception.Message}";
+            output.WriteLine(warningMessage);
+            operationsMonitor.Warn(OperationType.DeliveryProcessing, warningMessage, activeJobId, DateTime.UtcNow);
+            operationsMonitor.RecordLiveDeliveryLine(warningMessage, DateTime.UtcNow);
+            await Task.Delay(ReceiveFailureDelay, stoppingToken);
+            return;
+        }
 
         if (message is null)
         {
