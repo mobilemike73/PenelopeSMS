@@ -1,0 +1,43 @@
+using PenelopeSMS.Infrastructure.SqlServer.Queries;
+
+namespace PenelopeSMS.App.Workflows;
+
+public interface IMonitoringWorkflow
+{
+    Task<MonitoringDashboardSnapshot> GetDashboardAsync(
+        bool includeCompletedCampaigns = false,
+        CancellationToken cancellationToken = default);
+
+    Task<CampaignMonitoringDetailRecord> GetCampaignDetailAsync(
+        int campaignId,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed record MonitoringDashboardSnapshot(
+    IReadOnlyList<CampaignMonitoringSummaryRecord> Campaigns,
+    IReadOnlyList<PersistedCompletedJobRecord> CompletedJobs,
+    IReadOnlyList<PersistedMonitoringIssueRecord> PersistedIssues,
+    IReadOnlyList<MonitoringActiveJobRecord>? ActiveJobs = null,
+    IReadOnlyList<MonitoringWarningRecord>? ActiveWarnings = null,
+    IReadOnlyList<string>? LiveDeliveryLines = null)
+{
+    public IReadOnlyList<MonitoringActiveJobRecord> ActiveJobsOrEmpty => ActiveJobs ?? [];
+
+    public IReadOnlyList<MonitoringWarningRecord> ActiveWarningsOrEmpty => ActiveWarnings ?? [];
+
+    public IReadOnlyList<string> LiveDeliveryLinesOrEmpty => LiveDeliveryLines ?? [];
+}
+
+public sealed record MonitoringActiveJobRecord(
+    string JobId,
+    string JobType,
+    string Label,
+    string State,
+    DateTime StartedAtUtc,
+    string? ProgressDetail);
+
+public sealed record MonitoringWarningRecord(
+    string WarningId,
+    string Source,
+    string Message,
+    DateTime CreatedAtUtc);
