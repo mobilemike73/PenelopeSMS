@@ -112,7 +112,7 @@ public sealed class ImportWorkflowTests
     }
 
     [Fact]
-    public async Task RunAsyncClearsExistingImportDerivedDataBeforeReload()
+    public async Task RunAsyncAppendsAndUpdatesExistingImportData()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
 
@@ -123,7 +123,8 @@ public sealed class ImportWorkflowTests
         };
         var previousPhoneRecord = new PhoneNumberRecord
         {
-            CanonicalPhoneNumber = "+16505550100"
+            CanonicalPhoneNumber = "+16505550100",
+            LastImportedAtUtc = DateTime.UtcNow.AddDays(-3)
         };
         var previousCampaign = new Campaign
         {
@@ -167,22 +168,33 @@ public sealed class ImportWorkflowTests
         });
         await database.DbContext.SaveChangesAsync();
 
+        var previousImportTimestamp = previousPhoneRecord.LastImportedAtUtc;
+
         var workflow = CreateWorkflow(
             database.DbContext,
             new FakeOraclePhoneImportReader(
             [
+                new OracleCustomerPhoneRow("OLD-CUST", "650-555-0100", true, ImportedPhoneSource.Phone1),
                 new OracleCustomerPhoneRow("NEW-CUST", "650-253-0000", false, ImportedPhoneSource.Phone1)
             ]));
 
         await workflow.RunAsync();
 
-        Assert.Equal(1, await database.DbContext.ImportBatches.CountAsync());
-        Assert.Equal(1, await database.DbContext.PhoneNumberRecords.CountAsync());
-        Assert.Equal(1, await database.DbContext.CustomerPhoneLinks.CountAsync());
-        Assert.Equal(0, await database.DbContext.CampaignRecipientStatusHistory.CountAsync());
-        Assert.Equal(0, await database.DbContext.CampaignRecipients.CountAsync());
-        Assert.Equal(0, await database.DbContext.Campaigns.CountAsync());
-        Assert.DoesNotContain(await database.DbContext.CustomerPhoneLinks.Select(link => link.CustSid).ToListAsync(), custSid => custSid == "OLD-CUST");
+        var links = await database.DbContext.CustomerPhoneLinks
+            .OrderBy(link => link.CustSid)
+            .ToListAsync();
+        var updatedExistingPhoneRecord = await database.DbContext.PhoneNumberRecords
+            .SingleAsync(record => record.CanonicalPhoneNumber == "+16505550100");
+
+        Assert.Equal(2, await database.DbContext.ImportBatches.CountAsync());
+        Assert.Equal(2, await database.DbContext.PhoneNumberRecords.CountAsync());
+        Assert.Equal(2, links.Count);
+        Assert.Equal(1, await database.DbContext.CampaignRecipientStatusHistory.CountAsync());
+        Assert.Equal(1, await database.DbContext.CampaignRecipients.CountAsync());
+        Assert.Equal(1, await database.DbContext.Campaigns.CountAsync());
+        Assert.Contains(links, link => link.CustSid == "OLD-CUST" && link.IsVip);
+        Assert.Contains(links, link => link.CustSid == "NEW-CUST" && !link.IsVip);
+        Assert.True(updatedExistingPhoneRecord.LastImportedAtUtc > previousImportTimestamp);
     }
 
     private ImportWorkflow CreateWorkflow(

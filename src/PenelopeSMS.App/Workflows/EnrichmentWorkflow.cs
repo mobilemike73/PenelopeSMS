@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.Domain.Enums;
 using PenelopeSMS.Infrastructure.SqlServer.Queries;
@@ -10,10 +13,26 @@ public sealed class EnrichmentWorkflow(
     EnrichmentTargetingQuery enrichmentTargetingQuery,
     PhoneNumberEnrichmentRepository phoneNumberEnrichmentRepository,
     ITwilioLookupClient twilioLookupClient,
+    IServiceScopeFactory? serviceScopeFactory = null,
     IOperationsMonitor? runtimeOperationsMonitor = null) : IEnrichmentWorkflow
 {
+    private const int MaxParallelLookups = 4;
     private readonly IOperationsMonitor operationsMonitor = runtimeOperationsMonitor ?? NullOperationsMonitor.Instance;
     private readonly TextWriter output = Console.Out;
+
+    public EnrichmentWorkflow(
+        EnrichmentTargetingQuery enrichmentTargetingQuery,
+        PhoneNumberEnrichmentRepository phoneNumberEnrichmentRepository,
+        ITwilioLookupClient twilioLookupClient,
+        IOperationsMonitor runtimeOperationsMonitor)
+        : this(
+            enrichmentTargetingQuery,
+            phoneNumberEnrichmentRepository,
+            twilioLookupClient,
+            serviceScopeFactory: null,
+            runtimeOperationsMonitor)
+    {
+    }
 
     public async Task<EnrichmentWorkflowResult> RunAsync(
         CustomerSegment customerSegment = CustomerSegment.Standard,
@@ -32,38 +51,88 @@ public sealed class EnrichmentWorkflow(
         var updatedRecords = 0;
         var failedRecords = 0;
 
-        foreach (var target in targets)
+        if (serviceScopeFactory is null)
         {
-            var lookupResult = await twilioLookupClient.LookupAsync(
-                target.CanonicalPhoneNumber,
-                cancellationToken);
-
-            await phoneNumberEnrichmentRepository.ApplyResultAsync(
-                target.PhoneNumberRecordId,
-                lookupResult,
-                cancellationToken);
-
-            processedRecords++;
-
-            if (lookupResult.IsSuccess)
+            foreach (var target in targets)
             {
-                updatedRecords++;
+                var lookupResult = await twilioLookupClient.LookupAsync(
+                    target.CanonicalPhoneNumber,
+                    cancellationToken);
+
+                await phoneNumberEnrichmentRepository.ApplyResultAsync(
+                    target.PhoneNumberRecordId,
+                    lookupResult,
+                    cancellationToken);
+
+                processedRecords++;
+
+                if (lookupResult.IsSuccess)
+                {
+                    updatedRecords++;
+                    operationsMonitor.UpdateJob(
+                        jobId,
+                        $"Processed {processedRecords}/{targets.Count}, Updated {updatedRecords}, Failed {failedRecords}");
+                    continue;
+                }
+
+                failedRecords++;
+                var failureMessage =
+                    $"Enrichment failed for {target.CanonicalPhoneNumber}: {lookupResult.ErrorMessage}";
+                output.WriteLine(failureMessage);
+                operationsMonitor.Warn(OperationType.Enrichment, failureMessage, jobId);
                 operationsMonitor.UpdateJob(
                     jobId,
                     $"Processed {processedRecords}/{targets.Count}, Updated {updatedRecords}, Failed {failedRecords}");
-                continue;
             }
+        }
+        else
+        {
+            var failureMessages = new ConcurrentQueue<string>();
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = MaxParallelLookups,
+                CancellationToken = cancellationToken
+            };
 
-            failedRecords++;
-            output.WriteLine(
-                $"Enrichment failed for {target.CanonicalPhoneNumber}: {lookupResult.ErrorMessage}");
-            operationsMonitor.Warn(
-                OperationType.Enrichment,
-                $"Enrichment failed for {target.CanonicalPhoneNumber}: {lookupResult.ErrorMessage}",
-                jobId);
-            operationsMonitor.UpdateJob(
-                jobId,
-                $"Processed {processedRecords}/{targets.Count}, Updated {updatedRecords}, Failed {failedRecords}");
+            await Parallel.ForEachAsync(
+                targets,
+                parallelOptions,
+                async (target, token) =>
+                {
+                    await using var scope = serviceScopeFactory.CreateAsyncScope();
+                    var scopedLookupClient = scope.ServiceProvider.GetRequiredService<ITwilioLookupClient>();
+                    var scopedRepository = scope.ServiceProvider.GetRequiredService<PhoneNumberEnrichmentRepository>();
+                    var lookupResult = await scopedLookupClient.LookupAsync(target.CanonicalPhoneNumber, token);
+
+                    await scopedRepository.ApplyResultAsync(
+                        target.PhoneNumberRecordId,
+                        lookupResult,
+                        token);
+
+                    var processed = Interlocked.Increment(ref processedRecords);
+
+                    if (lookupResult.IsSuccess)
+                    {
+                        var updated = Interlocked.Increment(ref updatedRecords);
+                        operationsMonitor.UpdateJob(
+                            jobId,
+                            $"Processed {processed}/{targets.Count}, Updated {updated}, Failed {Volatile.Read(ref failedRecords)}");
+                        return;
+                    }
+
+                    var failed = Interlocked.Increment(ref failedRecords);
+                    failureMessages.Enqueue(
+                        $"Enrichment failed for {target.CanonicalPhoneNumber}: {lookupResult.ErrorMessage}");
+                    operationsMonitor.UpdateJob(
+                        jobId,
+                        $"Processed {processed}/{targets.Count}, Updated {Volatile.Read(ref updatedRecords)}, Failed {failed}");
+                });
+
+            while (failureMessages.TryDequeue(out var failureMessage))
+            {
+                output.WriteLine(failureMessage);
+                operationsMonitor.Warn(OperationType.Enrichment, failureMessage, jobId);
+            }
         }
 
         var skippedRecords = Math.Max(0, totalPhoneNumberCount - targets.Count);

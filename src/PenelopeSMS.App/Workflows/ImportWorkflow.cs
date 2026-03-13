@@ -22,7 +22,6 @@ public sealed class ImportWorkflow(
     public async Task<ImportWorkflowResult> RunAsync(CancellationToken cancellationToken = default)
     {
         var jobId = operationsMonitor.StartJob(OperationType.Import, "Oracle import", "Starting import");
-        await importPersistenceService.ResetImportDataAsync(cancellationToken);
         var importBatch = await importPersistenceService.StartBatchAsync(cancellationToken);
         var rowsRead = 0;
         var rowsImported = 0;
