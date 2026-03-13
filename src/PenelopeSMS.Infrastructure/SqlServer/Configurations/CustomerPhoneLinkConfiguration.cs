@@ -1,8 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PenelopeSMS.Domain.Entities;
-using PenelopeSMS.Domain.Enums;
-
 namespace PenelopeSMS.Infrastructure.SqlServer.Configurations;
 
 public sealed class CustomerPhoneLinkConfiguration : IEntityTypeConfiguration<CustomerPhoneLink>
@@ -21,7 +19,6 @@ public sealed class CustomerPhoneLinkConfiguration : IEntityTypeConfiguration<Cu
             .IsRequired();
 
         builder.Property(customerPhoneLink => customerPhoneLink.ImportedPhoneSource)
-            .HasDefaultValue(ImportedPhoneSource.Phone1)
             .IsRequired();
 
         builder.Property(customerPhoneLink => customerPhoneLink.RawPhoneNumber)

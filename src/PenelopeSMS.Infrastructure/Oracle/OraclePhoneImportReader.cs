@@ -66,42 +66,43 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
 
         await using (reader)
         {
-        var custSidOrdinal = reader.GetOrdinal("CUST_SID");
-        var phone1Ordinal = TryGetOrdinal(reader, "PHONE1");
-        var phone2Ordinal = TryGetOrdinal(reader, "PHONE2");
-        var isVipOrdinal = reader.GetOrdinal("IS_VIP");
+            var availableColumns = GetColumnNames(reader);
+            var custSidOrdinal = TryGetRequiredOrdinal(reader, "CUST_SID", availableColumns);
+            var phone1Ordinal = TryGetOrdinal(reader, "PHONE1");
+            var phone2Ordinal = TryGetOrdinal(reader, "PHONE2");
+            var isVipOrdinal = TryGetOrdinal(reader, "IS_VIP");
 
-        if (phone1Ordinal is null && phone2Ordinal is null)
-        {
-            throw new InvalidOperationException(
-                "Oracle import query must return PHONE1 and/or PHONE2 columns.");
-        }
-
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            var custSid = reader.IsDBNull(custSidOrdinal) ? string.Empty : reader.GetString(custSidOrdinal);
-            var isVip = GetBooleanFlag(reader, isVipOrdinal);
-            var phone1 = phone1Ordinal is null ? string.Empty : GetTrimmedString(reader, phone1Ordinal.Value);
-            var phone2 = phone2Ordinal is null ? string.Empty : GetTrimmedString(reader, phone2Ordinal.Value);
-
-            if (!string.IsNullOrWhiteSpace(phone1))
+            if (phone1Ordinal is null && phone2Ordinal is null)
             {
-                yield return new OracleCustomerPhoneRow(
-                    custSid,
-                    phone1,
-                    isVip,
-                    ImportedPhoneSource.Phone1);
+                throw new InvalidOperationException(
+                    $"Oracle import query must return PHONE1 and/or PHONE2 columns. Available columns: {string.Join(", ", availableColumns)}");
             }
 
-            if (!string.IsNullOrWhiteSpace(phone2))
+            while (await reader.ReadAsync(cancellationToken))
             {
-                yield return new OracleCustomerPhoneRow(
-                    custSid,
-                    phone2,
-                    isVip,
-                    ImportedPhoneSource.Phone2);
+                var custSid = GetTrimmedString(reader, custSidOrdinal);
+                var isVip = isVipOrdinal is not null && GetBooleanFlag(reader, isVipOrdinal.Value);
+                var phone1 = phone1Ordinal is null ? string.Empty : GetTrimmedString(reader, phone1Ordinal.Value);
+                var phone2 = phone2Ordinal is null ? string.Empty : GetTrimmedString(reader, phone2Ordinal.Value);
+
+                if (!string.IsNullOrWhiteSpace(phone1))
+                {
+                    yield return new OracleCustomerPhoneRow(
+                        custSid,
+                        phone1,
+                        isVip,
+                        ImportedPhoneSource.Phone1);
+                }
+
+                if (!string.IsNullOrWhiteSpace(phone2))
+                {
+                    yield return new OracleCustomerPhoneRow(
+                        custSid,
+                        phone2,
+                        isVip,
+                        ImportedPhoneSource.Phone2);
+                }
             }
-        }
         }
     }
 
@@ -118,9 +119,37 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
         return null;
     }
 
+    private static int TryGetRequiredOrdinal(
+        DbDataReader reader,
+        string columnName,
+        IReadOnlyList<string> availableColumns)
+    {
+        return TryGetOrdinal(reader, columnName)
+            ?? throw new InvalidOperationException(
+                $"Oracle import query must return {columnName}. Available columns: {string.Join(", ", availableColumns)}");
+    }
+
+    private static IReadOnlyList<string> GetColumnNames(DbDataReader reader)
+    {
+        var columnNames = new string[reader.FieldCount];
+
+        for (var index = 0; index < reader.FieldCount; index++)
+        {
+            columnNames[index] = reader.GetName(index);
+        }
+
+        return columnNames;
+    }
+
     private static string GetTrimmedString(DbDataReader reader, int ordinal)
     {
-        return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal).Trim();
+        if (reader.IsDBNull(ordinal))
+        {
+            return string.Empty;
+        }
+
+        var value = reader.GetValue(ordinal);
+        return Convert.ToString(value, CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
     }
 
     private static bool GetBooleanFlag(DbDataReader reader, int ordinal)

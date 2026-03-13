@@ -7,6 +7,25 @@ namespace PenelopeSMS.Infrastructure.SqlServer.Migrations
     /// <inheritdoc />
     public partial class AddVipAudienceAndPhoneSource : Migration
     {
+        private static readonly string[] CustomerPhoneLinkSourceIndexColumns =
+        [
+            "CustSid",
+            "PhoneNumberRecordId",
+            "ImportedPhoneSource"
+        ];
+
+        private static readonly string[] CustomerPhoneLinkVipIndexColumns =
+        [
+            "PhoneNumberRecordId",
+            "IsVip"
+        ];
+
+        private static readonly string[] CustomerPhoneLinkLegacyIndexColumns =
+        [
+            "CustSid",
+            "PhoneNumberRecordId"
+        ];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -42,13 +61,13 @@ namespace PenelopeSMS.Infrastructure.SqlServer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_CustomerPhoneLinks_CustSid_PhoneNumberRecordId_ImportedPhoneSource",
                 table: "CustomerPhoneLinks",
-                columns: new[] { "CustSid", "PhoneNumberRecordId", "ImportedPhoneSource" },
+                columns: CustomerPhoneLinkSourceIndexColumns,
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_CustomerPhoneLinks_PhoneNumberRecordId_IsVip",
                 table: "CustomerPhoneLinks",
-                columns: new[] { "PhoneNumberRecordId", "IsVip" });
+                columns: CustomerPhoneLinkVipIndexColumns);
         }
 
         /// <inheritdoc />
@@ -77,7 +96,7 @@ namespace PenelopeSMS.Infrastructure.SqlServer.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_CustomerPhoneLinks_CustSid_PhoneNumberRecordId",
                 table: "CustomerPhoneLinks",
-                columns: new[] { "CustSid", "PhoneNumberRecordId" },
+                columns: CustomerPhoneLinkLegacyIndexColumns,
                 unique: true);
 
             migrationBuilder.CreateIndex(

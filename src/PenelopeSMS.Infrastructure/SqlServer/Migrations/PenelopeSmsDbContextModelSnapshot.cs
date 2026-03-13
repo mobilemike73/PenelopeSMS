@@ -218,7 +218,6 @@ namespace PenelopeSMS.Infrastructure.SqlServer.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("ImportedPhoneSource")
-                        .HasDefaultValue(1)
                         .HasColumnType("int");
 
                     b.Property<bool>("IsVip")
