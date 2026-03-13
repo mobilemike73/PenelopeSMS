@@ -55,7 +55,7 @@ public sealed class DeliveryCallbackRepository(PenelopeSmsDbContext dbContext)
             return DeliveryCallbackApplyResult.OlderDiscarded();
         }
 
-        if (IsTerminal(recipient.Status) && !IsTerminal(incomingStatus))
+        if (ShouldDiscardForStatusRegression(recipient.Status, incomingStatus))
         {
             recipient.LastDeliveryCallbackReceivedAtUtc = MaxTimestamp(recipient.LastDeliveryCallbackReceivedAtUtc, envelope.ReceivedAtUtc);
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -172,6 +172,38 @@ public sealed class DeliveryCallbackRepository(PenelopeSmsDbContext dbContext)
         return status is CampaignRecipientStatus.Delivered
             or CampaignRecipientStatus.Undelivered
             or CampaignRecipientStatus.Failed;
+    }
+
+    private static bool ShouldDiscardForStatusRegression(
+        CampaignRecipientStatus currentStatus,
+        CampaignRecipientStatus incomingStatus)
+    {
+        if (currentStatus == incomingStatus)
+        {
+            return false;
+        }
+
+        if (IsTerminal(currentStatus))
+        {
+            return true;
+        }
+
+        return GetStatusProgressRank(incomingStatus) < GetStatusProgressRank(currentStatus);
+    }
+
+    private static int GetStatusProgressRank(CampaignRecipientStatus status)
+    {
+        return status switch
+        {
+            CampaignRecipientStatus.Pending => 0,
+            CampaignRecipientStatus.Submitted => 1,
+            CampaignRecipientStatus.Queued => 2,
+            CampaignRecipientStatus.Sent => 3,
+            CampaignRecipientStatus.Delivered => 4,
+            CampaignRecipientStatus.Undelivered => 4,
+            CampaignRecipientStatus.Failed => 4,
+            _ => throw new InvalidOperationException($"Unsupported campaign recipient status: {status}")
+        };
     }
 
     private static DateTime MaxTimestamp(DateTime existingTimestamp, DateTime candidateTimestamp)

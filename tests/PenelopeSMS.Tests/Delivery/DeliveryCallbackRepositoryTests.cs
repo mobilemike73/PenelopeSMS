@@ -69,6 +69,37 @@ public sealed class DeliveryCallbackRepositoryTests
     }
 
     [Fact]
+    public async Task ApplyAsyncDiscardsRegressiveStatusesEvenWhenTheyArriveLater()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        var recipient = await SeedRecipientAsync(database.DbContext);
+        recipient.Status = CampaignRecipientStatus.Sent;
+        recipient.CurrentStatusAtUtc = new DateTime(2026, 03, 13, 19, 54, 26, DateTimeKind.Utc);
+        recipient.LastDeliveryCallbackReceivedAtUtc = recipient.CurrentStatusAtUtc;
+        await database.DbContext.SaveChangesAsync();
+
+        var repository = new DeliveryCallbackRepository(database.DbContext);
+        var receivedAtUtc = recipient.CurrentStatusAtUtc.Value.AddSeconds(2);
+
+        var result = await repository.ApplyAsync(new DeliveryCallbackEnvelopeMessage(
+            MessageSid: "SM123",
+            MessageStatus: "queued",
+            ProviderErrorCode: null,
+            ProviderErrorMessage: null,
+            ProviderEventRawValue: null,
+            RawPayloadJson: "{\"Body\":\"queued later\"}",
+            ReceivedAtUtc: receivedAtUtc));
+
+        var storedRecipient = await database.DbContext.CampaignRecipients.SingleAsync();
+
+        Assert.Equal("older_discarded", result.Outcome);
+        Assert.Equal(CampaignRecipientStatus.Sent, storedRecipient.Status);
+        Assert.Equal(new DateTime(2026, 03, 13, 19, 54, 26, DateTimeKind.Utc), storedRecipient.CurrentStatusAtUtc);
+        Assert.Equal(receivedAtUtc, storedRecipient.LastDeliveryCallbackReceivedAtUtc);
+        Assert.Empty(await database.DbContext.CampaignRecipientStatusHistory.ToListAsync());
+    }
+
+    [Fact]
     public async Task ApplyAsyncStoresUnknownMessageSidInUnmatchedCallbacks()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
