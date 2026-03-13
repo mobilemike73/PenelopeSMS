@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\PenelopeSMS.App\PenelopeSMS.App.csproj" />
+    <ProjectReference Include="..\..\src\PenelopeSMS.CallbackBridge\PenelopeSMS.CallbackBridge.csproj" />
     <ProjectReference Include="..\..\src\PenelopeSMS.Domain\PenelopeSMS.Domain.csproj" />
     <ProjectReference Include="..\..\src\PenelopeSMS.Infrastructure\PenelopeSMS.Infrastructure.csproj" />
   </ItemGroup>
