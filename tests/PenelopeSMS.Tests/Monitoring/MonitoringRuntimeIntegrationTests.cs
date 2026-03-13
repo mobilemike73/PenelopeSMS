@@ -48,7 +48,6 @@ public sealed class MonitoringRuntimeIntegrationTests
             new CampaignMonitoringQuery(database.DbContext),
             new OperationsIssueQuery(database.DbContext),
             new MonitoringHtmlReportQuery(database.DbContext),
-            new MonitoringHtmlReportRenderer(),
             monitor);
 
         var dashboard = await workflow.GetDashboardAsync(includeCompletedCampaigns: true);

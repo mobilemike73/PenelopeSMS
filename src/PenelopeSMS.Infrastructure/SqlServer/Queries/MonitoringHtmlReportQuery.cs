@@ -173,7 +173,7 @@ public sealed class MonitoringHtmlReportQuery(PenelopeSmsDbContext dbContext)
             RecentFailures: recentFailures);
     }
 
-    private static IReadOnlyList<MonitoringCarrierRollupRecord> BuildCarrierRollups(
+    private static List<MonitoringCarrierRollupRecord> BuildCarrierRollups(
         IEnumerable<MonitoringCarrierDetailGroupRecord> baseGroups)
     {
         var rows = baseGroups.ToList();

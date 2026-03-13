@@ -9,7 +9,6 @@ public sealed class MonitoringWorkflow(
     CampaignMonitoringQuery campaignMonitoringQuery,
     OperationsIssueQuery operationsIssueQuery,
     MonitoringHtmlReportQuery monitoringHtmlReportQuery,
-    MonitoringHtmlReportRenderer monitoringHtmlReportRenderer,
     IOperationsMonitor operationsMonitor,
     TimeProvider? timeProvider = null) : IMonitoringWorkflow
 {
@@ -68,7 +67,7 @@ public sealed class MonitoringWorkflow(
             includeCompletedCampaigns: true,
             cancellationToken);
         var reportData = await monitoringHtmlReportQuery.GetReportDataAsync(cancellationToken);
-        var html = monitoringHtmlReportRenderer.Render(new MonitoringHtmlReportDocument(
+        var html = MonitoringHtmlReportRenderer.Render(new MonitoringHtmlReportDocument(
             GeneratedAtUtc: generatedAtUtc,
             Dashboard: dashboard,
             ReportData: reportData));

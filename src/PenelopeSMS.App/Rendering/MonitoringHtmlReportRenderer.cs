@@ -9,7 +9,7 @@ namespace PenelopeSMS.App.Rendering;
 
 public sealed class MonitoringHtmlReportRenderer
 {
-    public string Render(MonitoringHtmlReportDocument document)
+    public static string Render(MonitoringHtmlReportDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
 

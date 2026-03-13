@@ -76,7 +76,6 @@ public sealed class MonitoringWorkflowTests
             new CampaignMonitoringQuery(dbContext),
             new OperationsIssueQuery(dbContext),
             new MonitoringHtmlReportQuery(dbContext),
-            new MonitoringHtmlReportRenderer(),
             operationsMonitor);
     }
 
