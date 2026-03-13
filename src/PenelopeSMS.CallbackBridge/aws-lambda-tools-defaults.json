@@ -1,0 +1,12 @@
+{
+  "profile": "",
+  "region": "us-east-1",
+  "configuration": "Release",
+  "framework": "net8.0",
+  "function-runtime": "dotnet8",
+  "function-memory-size": 256,
+  "function-timeout": 30,
+  "function-handler": "PenelopeSMS.CallbackBridge::PenelopeSMS.CallbackBridge.Functions.DeliveryStatusCallbackFunction::HandleAsync",
+  "function-name": "PenelopeSMS-DeliveryStatusCallback",
+  "package-type": "Zip"
+}
