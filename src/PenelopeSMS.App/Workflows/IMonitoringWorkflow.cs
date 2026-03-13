@@ -15,7 +15,7 @@ public interface IMonitoringWorkflow
 
 public sealed record MonitoringDashboardSnapshot(
     IReadOnlyList<CampaignMonitoringSummaryRecord> Campaigns,
-    IReadOnlyList<PersistedCompletedJobRecord> CompletedJobs,
+    IReadOnlyList<MonitoringCompletedJobRecord> CompletedJobs,
     IReadOnlyList<PersistedMonitoringIssueRecord> PersistedIssues,
     IReadOnlyList<MonitoringActiveJobRecord>? ActiveJobs = null,
     IReadOnlyList<MonitoringWarningRecord>? ActiveWarnings = null,
@@ -41,3 +41,12 @@ public sealed record MonitoringWarningRecord(
     string Source,
     string Message,
     DateTime CreatedAtUtc);
+
+public sealed record MonitoringCompletedJobRecord(
+    string JobKey,
+    string JobType,
+    string Label,
+    string Outcome,
+    DateTime CompletedAtUtc,
+    string Summary,
+    bool IsLiveSession);

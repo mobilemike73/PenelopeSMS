@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using PenelopeSMS.App.Menu;
 using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.App.Options;
+using PenelopeSMS.App.Rendering;
 using PenelopeSMS.App.Services;
 using PenelopeSMS.App.Templates;
 using PenelopeSMS.App.Workflows;
@@ -69,10 +70,13 @@ public static class Program
         builder.Services.AddScoped<IEnrichmentWorkflow, EnrichmentWorkflow>();
         builder.Services.AddScoped<IEnrichmentRetryWorkflow, EnrichmentRetryWorkflow>();
         builder.Services.AddScoped<IImportWorkflow, ImportWorkflow>();
+        builder.Services.AddScoped<IMonitoringWorkflow, MonitoringWorkflow>();
         builder.Services.AddScoped<CampaignMenuAction>();
         builder.Services.AddScoped<EnrichmentFailureMenuAction>();
         builder.Services.AddScoped<EnrichmentMenuAction>();
         builder.Services.AddScoped<ImportMenuAction>();
+        builder.Services.AddScoped<MonitoringMenuAction>();
+        builder.Services.AddScoped<MonitoringScreenRenderer>();
         builder.Services.AddScoped<MainMenu>();
     }
 }
