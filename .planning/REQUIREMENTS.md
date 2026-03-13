@@ -9,10 +9,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Import
 
-- [ ] **IMPT-01**: Operator can import Oracle source rows containing phone number and `CUST_SID` into the local SQL Server database.
-- [ ] **IMPT-02**: App normalizes imported phone numbers into a canonical format before deduplication and storage.
-- [ ] **IMPT-03**: App deduplicates phone numbers globally while preserving all `CUST_SID` associations to the canonical phone record.
-- [ ] **IMPT-04**: App records import batch metadata, including started time, completed time, rows read, rows imported, and rows rejected.
+- [x] **IMPT-01**: Operator can import Oracle source rows containing phone number and `CUST_SID` into the local SQL Server database.
+- [x] **IMPT-02**: App normalizes imported phone numbers into a canonical format before deduplication and storage.
+- [x] **IMPT-03**: App deduplicates phone numbers globally while preserving all `CUST_SID` associations to the canonical phone record.
+- [x] **IMPT-04**: App records import batch metadata, including started time, completed time, rows read, rows imported, and rows rejected.
 
 ### Enrichment
 
@@ -32,14 +32,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Monitoring
 
-- [ ] **MON-01**: App can ingest Twilio delivery-status callbacks through the configured callback pipeline without querying every Message SID individually.
-- [ ] **MON-02**: App can consume Twilio delivery events from AWS SQS and apply them idempotently to the matching outbound message record.
-- [ ] **MON-03**: App stores delivery status history, including status transition time, Twilio error code, and provider message when available.
+- [x] **MON-01**: App can ingest Twilio delivery-status callbacks through the configured callback pipeline without querying every Message SID individually.
+- [x] **MON-02**: App can consume Twilio delivery events from AWS SQS and apply them idempotently to the matching outbound message record.
+- [x] **MON-03**: App stores delivery status history, including status transition time, Twilio error code, and provider message when available.
 - [ ] **MON-04**: Operator can view campaign progress totals for pending, submitted, sent, delivered, undelivered, and failed recipients.
 
 ### Operations
 
-- [ ] **OPER-01**: Operator can configure Oracle, SQL Server, Twilio, and AWS settings without modifying source code.
+- [x] **OPER-01**: Operator can configure Oracle, SQL Server, Twilio, and AWS settings without modifying source code.
 - [ ] **OPER-02**: App writes console-visible progress and error information for import, enrichment, campaign send, and callback processing jobs.
 
 ## v2 Requirements
@@ -78,10 +78,10 @@ To be populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IMPT-01 | Phase 1 | Pending |
-| IMPT-02 | Phase 1 | Pending |
-| IMPT-03 | Phase 1 | Pending |
-| IMPT-04 | Phase 1 | Pending |
+| IMPT-01 | Phase 1 | Complete |
+| IMPT-02 | Phase 1 | Complete |
+| IMPT-03 | Phase 1 | Complete |
+| IMPT-04 | Phase 1 | Complete |
 | ENRH-01 | Phase 2 | Complete |
 | ENRH-02 | Phase 2 | Complete |
 | ENRH-03 | Phase 2 | Complete |
@@ -92,11 +92,11 @@ To be populated during roadmap creation.
 | CAMP-04 | Phase 3 | Complete |
 | CAMP-05 | Phase 3 | Complete |
 | CAMP-06 | Phase 3 | Complete |
-| MON-01 | Phase 4 | Pending |
-| MON-02 | Phase 4 | Pending |
-| MON-03 | Phase 4 | Pending |
+| MON-01 | Phase 4 | Complete |
+| MON-02 | Phase 4 | Complete |
+| MON-03 | Phase 4 | Complete |
 | MON-04 | Phase 5 | Pending |
-| OPER-01 | Phase 1 | Pending |
+| OPER-01 | Phase 1 | Complete |
 | OPER-02 | Phase 5 | Pending |
 
 **Coverage:**
@@ -106,4 +106,4 @@ To be populated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-12*
-*Last updated: 2026-03-12 after Phase 3 completion*
+*Last updated: 2026-03-12 after Phase 4 completion*

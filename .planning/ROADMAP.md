@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Data Foundation** - Create the local data model, configuration, and Oracle import pipeline.
 - [x] **Phase 2: Number Intelligence** - Enrich imported numbers with Twilio and derive campaign eligibility. (completed 2026-03-12)
 - [x] **Phase 3: Campaign Execution** - Create campaigns from template files and send SMS in configurable batches. (completed 2026-03-12)
-- [ ] **Phase 4: Delivery Pipeline** - Ingest Twilio delivery callbacks through the callback pipeline and update message history.
+- [x] **Phase 4: Delivery Pipeline** - Ingest Twilio delivery callbacks through the callback pipeline and update message history. (completed 2026-03-12)
 - [ ] **Phase 5: Operator Monitoring** - Surface campaign progress, job visibility, and operational hardening in the console app.
 
 ## Phase Details
@@ -76,7 +76,12 @@ Plans:
   1. Twilio delivery events reach the app through the configured callback pipeline without per-message polling.
   2. The app can consume delivery events from AWS SQS and apply them idempotently to message records.
   3. Message history stores delivery-status transitions, timestamps, and provider error details when present.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [x] 04-01: Add delivery schema, callback bridge foundation, and callback configuration
+- [x] 04-02: Build sequential SQS processing and idempotent callback persistence
+- [x] 04-03: Wire outbound callbacks, hosted startup, runtime coverage, and setup docs
 
 ### Phase 5: Operator Monitoring
 **Goal**: Deliver operator-facing visibility and operational logging for import, enrichment, sending, and delivery processing.
@@ -98,5 +103,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. Data Foundation | 3/3 | Complete | 2026-03-12 |
 | 2. Number Intelligence | 3/3 | Complete | 2026-03-12 |
 | 3. Campaign Execution | 3/3 | Complete | 2026-03-12 |
-| 4. Delivery Pipeline | 0/TBD | Not started | - |
+| 4. Delivery Pipeline | 3/3 | Complete | 2026-03-12 |
 | 5. Operator Monitoring | 0/TBD | Not started | - |
