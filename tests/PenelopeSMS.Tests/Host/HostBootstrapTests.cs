@@ -5,7 +5,9 @@ using Microsoft.Extensions.Options;
 using PenelopeSMS.App;
 using PenelopeSMS.App.Menu;
 using PenelopeSMS.App.Options;
+using PenelopeSMS.App.Rendering;
 using PenelopeSMS.App.Services;
+using PenelopeSMS.App.Workflows;
 
 namespace PenelopeSMS.Tests.Host;
 
@@ -19,6 +21,21 @@ public sealed class HostBootstrapTests
         var menu = scope.ServiceProvider.GetRequiredService<MainMenu>();
 
         Assert.NotNull(menu);
+    }
+
+    [Fact]
+    public void BuildHostResolvesMonitoringMenuAndWorkflow()
+    {
+        using var host = CreateHost();
+        using var scope = host.Services.CreateScope();
+
+        var monitoringMenu = scope.ServiceProvider.GetRequiredService<MonitoringMenuAction>();
+        var monitoringWorkflow = scope.ServiceProvider.GetRequiredService<IMonitoringWorkflow>();
+        var renderer = scope.ServiceProvider.GetRequiredService<MonitoringScreenRenderer>();
+
+        Assert.NotNull(monitoringMenu);
+        Assert.NotNull(monitoringWorkflow);
+        Assert.NotNull(renderer);
     }
 
     [Fact]

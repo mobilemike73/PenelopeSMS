@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.Domain.Entities;
 using PenelopeSMS.Domain.Enums;
@@ -15,7 +16,7 @@ public sealed class MonitoringWorkflowTests
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
         await SeedAsync(database.DbContext);
-        var workflow = CreateWorkflow(database.DbContext);
+        var workflow = CreateWorkflow(database.DbContext, new OperationsMonitor());
 
         var dashboard = await workflow.GetDashboardAsync(includeCompletedCampaigns: true);
 
@@ -31,16 +32,19 @@ public sealed class MonitoringWorkflowTests
     public async Task GetCampaignDetailAsyncThrowsWhenCampaignDoesNotExist()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();
-        var workflow = CreateWorkflow(database.DbContext);
+        var workflow = CreateWorkflow(database.DbContext, new OperationsMonitor());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => workflow.GetCampaignDetailAsync(999));
     }
 
-    private static MonitoringWorkflow CreateWorkflow(PenelopeSmsDbContext dbContext)
+    private static MonitoringWorkflow CreateWorkflow(
+        PenelopeSmsDbContext dbContext,
+        IOperationsMonitor operationsMonitor)
     {
         return new MonitoringWorkflow(
             new CampaignMonitoringQuery(dbContext),
-            new OperationsIssueQuery(dbContext));
+            new OperationsIssueQuery(dbContext),
+            operationsMonitor);
     }
 
     private static async Task SeedAsync(PenelopeSmsDbContext dbContext)
