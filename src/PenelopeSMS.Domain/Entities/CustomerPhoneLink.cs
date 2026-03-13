@@ -1,3 +1,5 @@
+using PenelopeSMS.Domain.Enums;
+
 namespace PenelopeSMS.Domain.Entities;
 
 public sealed class CustomerPhoneLink
@@ -5,6 +7,10 @@ public sealed class CustomerPhoneLink
     public int Id { get; set; }
 
     public string CustSid { get; set; } = string.Empty;
+
+    public bool IsVip { get; set; }
+
+    public ImportedPhoneSource ImportedPhoneSource { get; set; } = ImportedPhoneSource.Phone1;
 
     public string RawPhoneNumber { get; set; } = string.Empty;
 

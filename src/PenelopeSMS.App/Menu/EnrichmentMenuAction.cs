@@ -1,5 +1,7 @@
 using PenelopeSMS.App.Workflows;
 
+using PenelopeSMS.Domain.Enums;
+
 namespace PenelopeSMS.App.Menu;
 
 public sealed class EnrichmentMenuAction(
@@ -12,9 +14,11 @@ public sealed class EnrichmentMenuAction(
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         output.WriteLine("Run phone enrichment");
-        output.WriteLine("1. Default due-record refresh");
-        output.WriteLine("2. Full refresh");
-        output.WriteLine("3. Review failed enrichments");
+        output.WriteLine("1. Standard due-record refresh");
+        output.WriteLine("2. Standard full refresh");
+        output.WriteLine("3. VIP due-record refresh");
+        output.WriteLine("4. VIP full refresh");
+        output.WriteLine("5. Review failed enrichments");
         output.WriteLine("0. Cancel");
         output.Write("> ");
 
@@ -26,30 +30,39 @@ public sealed class EnrichmentMenuAction(
             return;
         }
 
-        if (selection == "3")
+        if (selection == "5")
         {
             await enrichmentFailureMenuAction.ExecuteAsync(cancellationToken);
             return;
         }
 
-        if (selection is not ("1" or "2"))
+        if (selection is not ("1" or "2" or "3" or "4"))
         {
             output.WriteLine("Unknown selection.");
             output.WriteLine();
             return;
         }
 
-        var fullRefresh = selection == "2";
+        var customerSegment = selection is "3" or "4"
+            ? CustomerSegment.Vip
+            : CustomerSegment.Standard;
+        var fullRefresh = selection is "2" or "4";
+        var segmentLabel = customerSegment == CustomerSegment.Vip ? "VIP" : "standard";
 
         output.WriteLine(
             fullRefresh
-                ? "Starting full enrichment refresh..."
-                : "Starting due-record enrichment...");
+                ? $"Starting {segmentLabel} full enrichment refresh..."
+                : $"Starting {segmentLabel} due-record enrichment...");
 
-        var result = await enrichmentWorkflow.RunAsync(fullRefresh, cancellationToken);
+        var result = await enrichmentWorkflow.RunAsync(customerSegment, fullRefresh, cancellationToken);
 
         output.WriteLine(
-            $"Enrichment complete. Selected: {result.SelectedRecords}, Processed: {result.ProcessedRecords}, Updated: {result.UpdatedRecords}, Failed: {result.FailedRecords}, Skipped: {result.SkippedRecords}");
+            $"{FormatCustomerSegment(result.CustomerSegment)} enrichment complete. Selected: {result.SelectedRecords}, Processed: {result.ProcessedRecords}, Updated: {result.UpdatedRecords}, Failed: {result.FailedRecords}, Skipped: {result.SkippedRecords}");
         output.WriteLine();
+    }
+
+    private static string FormatCustomerSegment(CustomerSegment customerSegment)
+    {
+        return customerSegment == CustomerSegment.Vip ? "VIP" : "Standard";
     }
 }

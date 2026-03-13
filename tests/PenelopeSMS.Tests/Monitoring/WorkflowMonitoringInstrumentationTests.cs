@@ -25,7 +25,7 @@ public sealed class WorkflowMonitoringInstrumentationTests
         await using var database = await SqliteTestDatabase.CreateAsync();
         var monitor = new OperationsMonitor();
         var workflow = new ImportWorkflow(
-            new FakeOraclePhoneImportReader([new OracleCustomerPhoneRow("CUST-001", "650-253-0000")]),
+            new FakeOraclePhoneImportReader([new OracleCustomerPhoneRow("CUST-001", "650-253-0000", false, ImportedPhoneSource.Phone1)]),
             new PhoneNumberNormalizer(),
             new ImportPersistenceService(database.DbContext),
             Options.Create(new OracleOptions { DefaultRegion = "US" }),

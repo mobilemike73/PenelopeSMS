@@ -88,6 +88,57 @@ public sealed class EnrichmentWorkflowTests
     }
 
     [Fact]
+    public async Task RunAsyncVipModeTargetsOnlyVipRecords()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        var importBatch = new ImportBatch
+        {
+            Status = ImportBatch.CompletedStatus,
+            CompletedAtUtc = DateTime.UtcNow
+        };
+        var vipRecord = CreatePhoneNumberRecord("+16502530100");
+        var standardRecord = CreatePhoneNumberRecord("+16502530101");
+
+        database.DbContext.ImportBatches.Add(importBatch);
+        database.DbContext.PhoneNumberRecords.AddRange(vipRecord, standardRecord);
+        await database.DbContext.SaveChangesAsync();
+
+        database.DbContext.CustomerPhoneLinks.AddRange(
+            new CustomerPhoneLink
+            {
+                CustSid = "VIP-001",
+                IsVip = true,
+                ImportedPhoneSource = ImportedPhoneSource.Phone1,
+                RawPhoneNumber = "6502530100",
+                ImportBatchId = importBatch.Id,
+                PhoneNumberRecordId = vipRecord.Id
+            },
+            new CustomerPhoneLink
+            {
+                CustSid = "STD-001",
+                IsVip = false,
+                ImportedPhoneSource = ImportedPhoneSource.Phone1,
+                RawPhoneNumber = "6502530101",
+                ImportBatchId = importBatch.Id,
+                PhoneNumberRecordId = standardRecord.Id
+            });
+        await database.DbContext.SaveChangesAsync();
+
+        var lookupClient = new FakeTwilioLookupClient(
+            SuccessfulLookupResults(vipRecord.CanonicalPhoneNumber));
+        var workflow = CreateWorkflow(database.DbContext, lookupClient);
+
+        var result = await workflow.RunAsync(CustomerSegment.Vip, fullRefresh: true);
+
+        Assert.Equal(CustomerSegment.Vip, result.CustomerSegment);
+        Assert.Equal(1, result.SelectedRecords);
+        Assert.Equal(1, result.ProcessedRecords);
+        Assert.Equal(1, result.UpdatedRecords);
+        Assert.Equal(0, result.SkippedRecords);
+        Assert.Equal([vipRecord.CanonicalPhoneNumber], lookupClient.RequestedNumbers);
+    }
+
+    [Fact]
     public async Task RunAsyncPersistsSuccessfulLookupFactsAndDerivedEligibility()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();

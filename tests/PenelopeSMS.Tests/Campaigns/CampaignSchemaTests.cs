@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PenelopeSMS.Domain.Entities;
+using PenelopeSMS.Domain.Enums;
 using PenelopeSMS.Infrastructure.SqlServer;
 
 namespace PenelopeSMS.Tests.Campaigns;
@@ -21,7 +22,8 @@ public sealed class CampaignSchemaTests
             Name = "March Promo",
             TemplateFilePath = @"C:\templates\march.txt",
             TemplateBody = "Hello from PenelopeSMS",
-            BatchSize = 250
+            BatchSize = 250,
+            AudienceSegment = CustomerSegment.Vip
         };
 
         database.DbContext.PhoneNumberRecords.Add(phoneNumber);
@@ -53,7 +55,8 @@ public sealed class CampaignSchemaTests
             Name = "Spring Promo",
             TemplateFilePath = @"C:\templates\spring.txt",
             TemplateBody = "Line one\nLine two",
-            BatchSize = 150
+            BatchSize = 150,
+            AudienceSegment = CustomerSegment.Standard
         });
 
         await database.DbContext.SaveChangesAsync();
@@ -64,6 +67,7 @@ public sealed class CampaignSchemaTests
         Assert.Equal(@"C:\templates\spring.txt", storedCampaign.TemplateFilePath);
         Assert.Equal("Line one\nLine two", storedCampaign.TemplateBody);
         Assert.Equal(150, storedCampaign.BatchSize);
+        Assert.Equal(CustomerSegment.Standard, storedCampaign.AudienceSegment);
     }
 
     private sealed class SqliteTestDatabase : IAsyncDisposable

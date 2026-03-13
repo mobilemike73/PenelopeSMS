@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.App.Options;
+using PenelopeSMS.Domain.Enums;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
 
 namespace PenelopeSMS.App.Menu;
@@ -62,15 +63,26 @@ public sealed class CampaignMenuAction(
             return;
         }
 
+        output.Write("Audience segment (1 = Standard, 2 = VIP): ");
+        var rawAudienceSegment = input.ReadLine();
+
+        if (!TryParseCustomerSegment(rawAudienceSegment, out var audienceSegment))
+        {
+            output.WriteLine("Audience segment must be 1 for Standard or 2 for VIP.");
+            output.WriteLine();
+            return;
+        }
+
         try
         {
             var result = await campaignCreationWorkflow.CreateDraftAsync(
                 templatePath,
                 batchSize,
+                audienceSegment,
                 cancellationToken);
 
             output.WriteLine(
-                $"Campaign draft {result.CampaignId} ({result.CampaignName}) created. Drafted: {result.DraftedRecipients}, Skipped: {result.SkippedIneligibleRecipients}, Batch size: {result.BatchSize}");
+                $"Campaign draft {result.CampaignId} ({result.CampaignName}) [{FormatCustomerSegment(result.AudienceSegment)}] created. Drafted: {result.DraftedRecipients}, Skipped: {result.SkippedIneligibleRecipients}, Batch size: {result.BatchSize}");
         }
         catch (Exception exception) when (exception is IOException or InvalidOperationException)
         {
@@ -99,7 +111,7 @@ public sealed class CampaignMenuAction(
         foreach (var campaign in sendableCampaigns)
         {
             output.WriteLine(
-                $"[{campaign.CampaignId}] {campaign.CampaignName} | Batch size: {campaign.BatchSize} | Pending: {campaign.PendingRecipients} | Submitted: {campaign.SubmittedRecipients} | Failed: {campaign.FailedRecipients}");
+                $"[{campaign.CampaignId}] {campaign.CampaignName} | Segment: {FormatCustomerSegment(campaign.AudienceSegment)} | Batch size: {campaign.BatchSize} | Pending: {campaign.PendingRecipients} | Submitted: {campaign.SubmittedRecipients} | Failed: {campaign.FailedRecipients}");
         }
 
         output.Write("Campaign ID to send: ");
@@ -136,5 +148,19 @@ public sealed class CampaignMenuAction(
         }
 
         output.WriteLine();
+    }
+
+    private static bool TryParseCustomerSegment(string? selection, out CustomerSegment customerSegment)
+    {
+        customerSegment = selection == "2"
+            ? CustomerSegment.Vip
+            : CustomerSegment.Standard;
+
+        return selection is "1" or "2";
+    }
+
+    private static string FormatCustomerSegment(CustomerSegment customerSegment)
+    {
+        return customerSegment == CustomerSegment.Vip ? "VIP" : "Standard";
     }
 }

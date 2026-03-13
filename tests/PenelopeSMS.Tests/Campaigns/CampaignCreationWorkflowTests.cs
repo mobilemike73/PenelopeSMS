@@ -12,7 +12,8 @@ namespace PenelopeSMS.Tests.Campaigns;
 
 public sealed class CampaignCreationWorkflowTests
 {
-    private static readonly int[] ExpectedEligiblePhoneRecordIds = [1, 3];
+    private static readonly int[] ExpectedStandardEligiblePhoneRecordIds = [1, 3];
+    private static readonly int[] ExpectedVipEligiblePhoneRecordIds = [4];
 
     [Fact]
     public async Task CreateDraftAsyncCreatesCampaignFromTemplateAndEligibleCanonicalRecipientsOnly()
@@ -41,6 +42,7 @@ public sealed class CampaignCreationWorkflowTests
         Assert.Equal(@"C:\templates\march.txt", storedCampaign.TemplateFilePath);
         Assert.Equal("Hello from PenelopeSMS", storedCampaign.TemplateBody);
         Assert.Equal(250, storedCampaign.BatchSize);
+        Assert.Equal(CustomerSegment.Standard, storedCampaign.AudienceSegment);
         Assert.Equal(2, storedCampaign.Recipients.Count);
         Assert.Equal(2, storedRecipients.Count);
         Assert.All(storedRecipients, recipient => Assert.Equal(CampaignRecipientStatus.Pending, recipient.Status));
@@ -65,8 +67,37 @@ public sealed class CampaignCreationWorkflowTests
 
         Assert.Equal(2, campaignRecipients.Count);
         Assert.Equal(
-            ExpectedEligiblePhoneRecordIds,
+            ExpectedStandardEligiblePhoneRecordIds,
             campaignRecipients.Select(recipient => recipient.PhoneNumberRecordId));
+    }
+
+    [Fact]
+    public async Task CreateDraftAsyncCanTargetVipRecipientsOnly()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        await SeedPhoneNumbersAsync(database.DbContext);
+
+        var workflow = new CampaignCreationWorkflow(
+            new FakePlainTextTemplateLoader(@"C:\templates\vip.txt", "VIP update"),
+            new CampaignRecipientSelectionQuery(database.DbContext),
+            new CampaignRepository(database.DbContext));
+
+        var result = await workflow.CreateDraftAsync(
+            @"C:\templates\vip.txt",
+            50,
+            CustomerSegment.Vip);
+
+        var storedCampaign = await database.DbContext.Campaigns
+            .Include(campaign => campaign.Recipients)
+            .SingleAsync(campaign => campaign.Id == result.CampaignId);
+
+        Assert.Equal(CustomerSegment.Vip, result.AudienceSegment);
+        Assert.Equal(1, result.DraftedRecipients);
+        Assert.Equal(0, result.SkippedIneligibleRecipients);
+        Assert.Equal(CustomerSegment.Vip, storedCampaign.AudienceSegment);
+        Assert.Equal(
+            ExpectedVipEligiblePhoneRecordIds,
+            storedCampaign.Recipients.Select(recipient => recipient.PhoneNumberRecordId).OrderBy(id => id));
     }
 
     private static async Task SeedPhoneNumbersAsync(PenelopeSmsDbContext dbContext)
@@ -98,14 +129,22 @@ public sealed class CampaignCreationWorkflowTests
             CampaignEligibilityStatus = CampaignEligibilityStatus.Eligible
         };
 
+        var eligibleVip = new PhoneNumberRecord
+        {
+            CanonicalPhoneNumber = "+16502530003",
+            CampaignEligibilityStatus = CampaignEligibilityStatus.Eligible
+        };
+
         dbContext.ImportBatches.Add(importBatch);
-        dbContext.PhoneNumberRecords.AddRange(eligiblePrimary, ineligible, eligibleSecondary);
+        dbContext.PhoneNumberRecords.AddRange(eligiblePrimary, ineligible, eligibleSecondary, eligibleVip);
         await dbContext.SaveChangesAsync();
 
         dbContext.CustomerPhoneLinks.AddRange(
             new CustomerPhoneLink
             {
                 CustSid = "CUST-001",
+                IsVip = false,
+                ImportedPhoneSource = ImportedPhoneSource.Phone1,
                 RawPhoneNumber = "650-253-0000",
                 ImportBatchId = importBatch.Id,
                 PhoneNumberRecordId = eligiblePrimary.Id
@@ -113,6 +152,8 @@ public sealed class CampaignCreationWorkflowTests
             new CustomerPhoneLink
             {
                 CustSid = "CUST-002",
+                IsVip = false,
+                ImportedPhoneSource = ImportedPhoneSource.Phone2,
                 RawPhoneNumber = "+1 (650) 253-0000",
                 ImportBatchId = importBatch.Id,
                 PhoneNumberRecordId = eligiblePrimary.Id
@@ -120,9 +161,29 @@ public sealed class CampaignCreationWorkflowTests
             new CustomerPhoneLink
             {
                 CustSid = "CUST-003",
+                IsVip = false,
+                ImportedPhoneSource = ImportedPhoneSource.Phone1,
                 RawPhoneNumber = "650-253-0002",
                 ImportBatchId = importBatch.Id,
                 PhoneNumberRecordId = eligibleSecondary.Id
+            },
+            new CustomerPhoneLink
+            {
+                CustSid = "CUST-004",
+                IsVip = false,
+                ImportedPhoneSource = ImportedPhoneSource.Phone1,
+                RawPhoneNumber = "650-253-0001",
+                ImportBatchId = importBatch.Id,
+                PhoneNumberRecordId = ineligible.Id
+            },
+            new CustomerPhoneLink
+            {
+                CustSid = "CUST-005",
+                IsVip = true,
+                ImportedPhoneSource = ImportedPhoneSource.Phone1,
+                RawPhoneNumber = "650-253-0003",
+                ImportBatchId = importBatch.Id,
+                PhoneNumberRecordId = eligibleVip.Id
             });
 
         await dbContext.SaveChangesAsync();

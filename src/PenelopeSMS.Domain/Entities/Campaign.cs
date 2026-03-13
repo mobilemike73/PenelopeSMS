@@ -14,6 +14,8 @@ public sealed class Campaign
 
     public int BatchSize { get; set; }
 
+    public CustomerSegment AudienceSegment { get; set; } = CustomerSegment.Standard;
+
     public CampaignStatus Status { get; set; } = CampaignStatus.Draft;
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PenelopeSMS.Domain.Entities;
+using PenelopeSMS.Domain.Enums;
 using PenelopeSMS.Domain.Services;
 using PenelopeSMS.Infrastructure.SqlServer;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
@@ -21,11 +22,15 @@ public sealed class ImportPersistenceTests
         var firstResult = await importService.PersistAsync(
             importBatch.Id,
             "CUST-001",
+            false,
+            ImportedPhoneSource.Phone1,
             normalizer.Normalize("650-253-0000", "US"));
 
         var secondResult = await importService.PersistAsync(
             importBatch.Id,
             "CUST-002",
+            false,
+            ImportedPhoneSource.Phone1,
             normalizer.Normalize("+1 (650) 253-0000", "US"));
 
         var phoneNumberRecords = await database.DbContext.PhoneNumberRecords.ToListAsync();
@@ -50,8 +55,8 @@ public sealed class ImportPersistenceTests
         var importBatch = await importService.StartBatchAsync();
         var normalizedPhoneNumber = normalizer.Normalize("650-253-0000", "US");
 
-        await importService.PersistAsync(importBatch.Id, "CUST-001", normalizedPhoneNumber);
-        var repeatedResult = await importService.PersistAsync(importBatch.Id, "CUST-001", normalizedPhoneNumber);
+        await importService.PersistAsync(importBatch.Id, "CUST-001", false, ImportedPhoneSource.Phone1, normalizedPhoneNumber);
+        var repeatedResult = await importService.PersistAsync(importBatch.Id, "CUST-001", false, ImportedPhoneSource.Phone1, normalizedPhoneNumber);
 
         await importService.CompleteBatchAsync(
             importBatch.Id,
@@ -69,6 +74,39 @@ public sealed class ImportPersistenceTests
         Assert.Equal(ImportBatch.CompletedStatus, storedBatch.Status);
         Assert.NotNull(storedBatch.CompletedAtUtc);
         Assert.Equal(1, linkCount);
+    }
+
+    [Fact]
+    public async Task PersistAsyncKeepsPhone1AndPhone2LinksDistinctForSameCustomer()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        var importService = new ImportPersistenceService(database.DbContext);
+        var importBatch = await importService.StartBatchAsync();
+        var normalizedPhoneNumber = normalizer.Normalize("650-253-0000", "US");
+
+        var phone1Result = await importService.PersistAsync(
+            importBatch.Id,
+            "CUST-001",
+            false,
+            ImportedPhoneSource.Phone1,
+            normalizedPhoneNumber);
+
+        var phone2Result = await importService.PersistAsync(
+            importBatch.Id,
+            "CUST-001",
+            false,
+            ImportedPhoneSource.Phone2,
+            normalizedPhoneNumber);
+
+        var links = await database.DbContext.CustomerPhoneLinks
+            .OrderBy(link => link.ImportedPhoneSource)
+            .ToListAsync();
+
+        Assert.True(phone1Result.CreatedCustomerLink);
+        Assert.True(phone2Result.CreatedCustomerLink);
+        Assert.Equal(2, links.Count);
+        Assert.Equal(ImportedPhoneSource.Phone1, links[0].ImportedPhoneSource);
+        Assert.Equal(ImportedPhoneSource.Phone2, links[1].ImportedPhoneSource);
     }
 
     private sealed class SqliteTestDatabase : IAsyncDisposable

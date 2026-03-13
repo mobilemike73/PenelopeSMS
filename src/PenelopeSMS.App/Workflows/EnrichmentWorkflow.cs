@@ -1,4 +1,5 @@
 using PenelopeSMS.App.Monitoring;
+using PenelopeSMS.Domain.Enums;
 using PenelopeSMS.Infrastructure.SqlServer.Queries;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
 using PenelopeSMS.Infrastructure.Twilio;
@@ -15,15 +16,17 @@ public sealed class EnrichmentWorkflow(
     private readonly TextWriter output = Console.Out;
 
     public async Task<EnrichmentWorkflowResult> RunAsync(
+        CustomerSegment customerSegment = CustomerSegment.Standard,
         bool fullRefresh = false,
         CancellationToken cancellationToken = default)
     {
+        var segmentLabel = customerSegment == CustomerSegment.Vip ? "VIP" : "Standard";
         var label = fullRefresh
-            ? "Full enrichment refresh"
-            : "Due-record enrichment";
+            ? $"{segmentLabel} full enrichment refresh"
+            : $"{segmentLabel} due-record enrichment";
         var jobId = operationsMonitor.StartJob(OperationType.Enrichment, label, "Selecting records");
-        var totalPhoneNumberCount = await enrichmentTargetingQuery.CountImportedPhoneNumbersAsync(cancellationToken);
-        var targets = await enrichmentTargetingQuery.ListTargetsAsync(fullRefresh, cancellationToken);
+        var totalPhoneNumberCount = await enrichmentTargetingQuery.CountImportedPhoneNumbersAsync(customerSegment, cancellationToken);
+        var targets = await enrichmentTargetingQuery.ListTargetsAsync(customerSegment, fullRefresh, cancellationToken);
 
         var processedRecords = 0;
         var updatedRecords = 0;
@@ -69,6 +72,7 @@ public sealed class EnrichmentWorkflow(
             $"Enrichment complete. Selected: {targets.Count}, Processed: {processedRecords}, Updated: {updatedRecords}, Failed: {failedRecords}, Skipped: {skippedRecords}");
 
         return new EnrichmentWorkflowResult(
+            CustomerSegment: customerSegment,
             FullRefresh: fullRefresh,
             SelectedRecords: targets.Count,
             ProcessedRecords: processedRecords,

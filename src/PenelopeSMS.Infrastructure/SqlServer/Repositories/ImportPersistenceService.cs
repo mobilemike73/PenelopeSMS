@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PenelopeSMS.Domain.Entities;
+using PenelopeSMS.Domain.Enums;
 using PenelopeSMS.Domain.Services;
 
 namespace PenelopeSMS.Infrastructure.SqlServer.Repositories;
@@ -23,6 +24,8 @@ public sealed class ImportPersistenceService(PenelopeSmsDbContext dbContext)
     public async Task<PersistPhoneNumberResult> PersistAsync(
         int importBatchId,
         string custSid,
+        bool isVip,
+        ImportedPhoneSource importedPhoneSource,
         PhoneNumberNormalizationResult normalizedPhoneNumber,
         CancellationToken cancellationToken = default)
     {
@@ -61,7 +64,9 @@ public sealed class ImportPersistenceService(PenelopeSmsDbContext dbContext)
 
         var customerPhoneLink = await dbContext.CustomerPhoneLinks
             .SingleOrDefaultAsync(
-                link => link.CustSid == custSid && link.PhoneNumberRecordId == phoneNumberRecord.Id,
+                link => link.CustSid == custSid
+                    && link.PhoneNumberRecordId == phoneNumberRecord.Id
+                    && link.ImportedPhoneSource == importedPhoneSource,
                 cancellationToken);
 
         var createdCustomerLink = false;
@@ -71,6 +76,8 @@ public sealed class ImportPersistenceService(PenelopeSmsDbContext dbContext)
             customerPhoneLink = new CustomerPhoneLink
             {
                 CustSid = custSid,
+                IsVip = isVip,
+                ImportedPhoneSource = importedPhoneSource,
                 RawPhoneNumber = normalizedPhoneNumber.RawInput,
                 CreatedAtUtc = utcNow,
                 LastImportedAtUtc = utcNow,
@@ -83,7 +90,11 @@ public sealed class ImportPersistenceService(PenelopeSmsDbContext dbContext)
         }
         else
         {
+            customerPhoneLink.IsVip = isVip;
+            customerPhoneLink.ImportedPhoneSource = importedPhoneSource;
+            customerPhoneLink.RawPhoneNumber = normalizedPhoneNumber.RawInput;
             customerPhoneLink.LastImportedAtUtc = utcNow;
+            customerPhoneLink.ImportBatchId = importBatch.Id;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

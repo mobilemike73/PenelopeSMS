@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using PenelopeSMS.App.Options;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.Domain.Entities;
+using PenelopeSMS.Domain.Enums;
 using PenelopeSMS.Domain.Services;
 using PenelopeSMS.Infrastructure.Oracle;
 using PenelopeSMS.Infrastructure.SqlServer;
@@ -27,8 +28,8 @@ public sealed class ImportWorkflowTests
             database.DbContext,
             new FakeOraclePhoneImportReader(
             [
-                new OracleCustomerPhoneRow("CUST-001", "650-253-0000"),
-                new OracleCustomerPhoneRow("CUST-002", "+1 (650) 253-0000")
+                new OracleCustomerPhoneRow("CUST-001", "650-253-0000", false, ImportedPhoneSource.Phone1),
+                new OracleCustomerPhoneRow("CUST-002", "+1 (650) 253-0000", false, ImportedPhoneSource.Phone1)
             ]));
 
         var result = await workflow.RunAsync();
@@ -52,8 +53,8 @@ public sealed class ImportWorkflowTests
             database.DbContext,
             new FakeOraclePhoneImportReader(
             [
-                new OracleCustomerPhoneRow("CUST-001", "650-253-0000"),
-                new OracleCustomerPhoneRow("CUST-003", "123")
+                new OracleCustomerPhoneRow("CUST-001", "650-253-0000", false, ImportedPhoneSource.Phone1),
+                new OracleCustomerPhoneRow("CUST-003", "123", false, ImportedPhoneSource.Phone1)
             ]));
 
         var result = await workflow.RunAsync();
@@ -73,7 +74,7 @@ public sealed class ImportWorkflowTests
         var workflow = CreateWorkflow(
             database.DbContext,
             new FakeOraclePhoneImportReader(
-                [new OracleCustomerPhoneRow("CUST-001", "650-253-0000")],
+                [new OracleCustomerPhoneRow("CUST-001", "650-253-0000", false, ImportedPhoneSource.Phone1)],
                 new InvalidOperationException("Oracle connection dropped.")));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => workflow.RunAsync());
@@ -85,6 +86,29 @@ public sealed class ImportWorkflowTests
         Assert.Equal(1, batch.RowsImported);
         Assert.Equal(0, batch.RowsRejected);
         Assert.NotNull(batch.CompletedAtUtc);
+    }
+
+    [Fact]
+    public async Task RunAsyncPersistsVipFlagsOnCustomerLinks()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        var workflow = CreateWorkflow(
+            database.DbContext,
+            new FakeOraclePhoneImportReader(
+            [
+                new OracleCustomerPhoneRow("CUST-VIP", "650-253-0000", true, ImportedPhoneSource.Phone1),
+                new OracleCustomerPhoneRow("CUST-STD", "650-253-0001", false, ImportedPhoneSource.Phone1)
+            ]));
+
+        await workflow.RunAsync();
+
+        var links = await database.DbContext.CustomerPhoneLinks
+            .OrderBy(link => link.CustSid)
+            .ToListAsync();
+
+        Assert.Equal(2, links.Count);
+        Assert.False(links[0].IsVip);
+        Assert.True(links[1].IsVip);
     }
 
     private ImportWorkflow CreateWorkflow(

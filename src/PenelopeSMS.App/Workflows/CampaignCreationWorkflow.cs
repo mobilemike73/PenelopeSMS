@@ -1,4 +1,5 @@
 using PenelopeSMS.App.Templates;
+using PenelopeSMS.Domain.Enums;
 using PenelopeSMS.Infrastructure.SqlServer.Queries;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
 
@@ -12,6 +13,7 @@ public sealed class CampaignCreationWorkflow(
     public async Task<CampaignCreationWorkflowResult> CreateDraftAsync(
         string templatePath,
         int batchSize,
+        CustomerSegment audienceSegment = CustomerSegment.Standard,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(templatePath);
@@ -19,8 +21,10 @@ public sealed class CampaignCreationWorkflow(
 
         var template = await templateLoader.LoadAsync(templatePath, cancellationToken);
         var totalImportedPhoneNumbers = await campaignRecipientSelectionQuery.CountImportedPhoneNumbersAsync(
+            audienceSegment,
             cancellationToken);
         var eligibleRecipients = await campaignRecipientSelectionQuery.ListEligibleRecipientsAsync(
+            audienceSegment,
             cancellationToken);
 
         if (eligibleRecipients.Count == 0)
@@ -35,6 +39,7 @@ public sealed class CampaignCreationWorkflow(
             templateFilePath: template.TemplatePath,
             templateBody: template.TemplateBody,
             batchSize: batchSize,
+            audienceSegment: audienceSegment,
             phoneNumberRecordIds: eligibleRecipients
                 .Select(recipient => recipient.PhoneNumberRecordId)
                 .ToArray(),
@@ -45,6 +50,7 @@ public sealed class CampaignCreationWorkflow(
             CampaignName: draft.CampaignName,
             TemplatePath: template.TemplatePath,
             BatchSize: draft.BatchSize,
+            AudienceSegment: draft.AudienceSegment,
             DraftedRecipients: draft.RecipientCount,
             SkippedIneligibleRecipients: Math.Max(0, totalImportedPhoneNumbers - draft.RecipientCount));
     }

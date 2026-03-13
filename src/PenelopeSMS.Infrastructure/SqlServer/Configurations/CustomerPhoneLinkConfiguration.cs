@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PenelopeSMS.Domain.Entities;
+using PenelopeSMS.Domain.Enums;
 
 namespace PenelopeSMS.Infrastructure.SqlServer.Configurations;
 
@@ -16,6 +17,13 @@ public sealed class CustomerPhoneLinkConfiguration : IEntityTypeConfiguration<Cu
             .HasMaxLength(64)
             .IsRequired();
 
+        builder.Property(customerPhoneLink => customerPhoneLink.IsVip)
+            .IsRequired();
+
+        builder.Property(customerPhoneLink => customerPhoneLink.ImportedPhoneSource)
+            .HasDefaultValue(ImportedPhoneSource.Phone1)
+            .IsRequired();
+
         builder.Property(customerPhoneLink => customerPhoneLink.RawPhoneNumber)
             .HasMaxLength(64)
             .IsRequired();
@@ -23,9 +31,16 @@ public sealed class CustomerPhoneLinkConfiguration : IEntityTypeConfiguration<Cu
         builder.HasIndex(customerPhoneLink => new
             {
                 customerPhoneLink.CustSid,
-                customerPhoneLink.PhoneNumberRecordId
+                customerPhoneLink.PhoneNumberRecordId,
+                customerPhoneLink.ImportedPhoneSource
             })
             .IsUnique();
+
+        builder.HasIndex(customerPhoneLink => new
+            {
+                customerPhoneLink.PhoneNumberRecordId,
+                customerPhoneLink.IsVip
+            });
 
         builder.HasOne(customerPhoneLink => customerPhoneLink.ImportBatch)
             .WithMany(importBatch => importBatch.CustomerPhoneLinks)

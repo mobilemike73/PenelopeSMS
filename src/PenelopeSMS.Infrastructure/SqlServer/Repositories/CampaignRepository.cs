@@ -1,4 +1,5 @@
 using PenelopeSMS.Domain.Entities;
+using PenelopeSMS.Domain.Enums;
 
 namespace PenelopeSMS.Infrastructure.SqlServer.Repositories;
 
@@ -9,6 +10,7 @@ public sealed class CampaignRepository(PenelopeSmsDbContext dbContext)
         string templateFilePath,
         string templateBody,
         int batchSize,
+        CustomerSegment audienceSegment,
         IReadOnlyCollection<int> phoneNumberRecordIds,
         CancellationToken cancellationToken = default)
     {
@@ -25,6 +27,7 @@ public sealed class CampaignRepository(PenelopeSmsDbContext dbContext)
             TemplateFilePath = templateFilePath,
             TemplateBody = templateBody,
             BatchSize = batchSize,
+            AudienceSegment = audienceSegment,
             CreatedAtUtc = utcNow
         };
 
@@ -43,6 +46,7 @@ public sealed class CampaignRepository(PenelopeSmsDbContext dbContext)
         return new CampaignDraftRecord(
             campaign.Id,
             campaign.Name,
+            campaign.AudienceSegment,
             campaign.BatchSize,
             campaign.Recipients.Count);
     }
@@ -51,5 +55,6 @@ public sealed class CampaignRepository(PenelopeSmsDbContext dbContext)
 public sealed record CampaignDraftRecord(
     int CampaignId,
     string CampaignName,
+    CustomerSegment AudienceSegment,
     int BatchSize,
     int RecipientCount);

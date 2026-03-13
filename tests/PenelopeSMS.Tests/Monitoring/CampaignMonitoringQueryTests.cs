@@ -109,16 +109,16 @@ public sealed class CampaignMonitoringQueryTests
         await dbContext.SaveChangesAsync();
 
         dbContext.CampaignRecipients.AddRange(
-            BuildRecipient(recentCampaign.Id, numbers[0].Id, CampaignRecipientStatus.Pending),
+            BuildRecipient(recentCampaign.Id, numbers[0].Id, CampaignRecipientStatus.Pending, createdAtUtc: new DateTime(2026, 03, 13, 12, 09, 00, DateTimeKind.Utc)),
             BuildRecipient(recentCampaign.Id, numbers[1].Id, CampaignRecipientStatus.Submitted, submittedAtUtc: new DateTime(2026, 03, 13, 12, 10, 00, DateTimeKind.Utc)),
-            BuildRecipient(recentCampaign.Id, numbers[2].Id, CampaignRecipientStatus.Queued, currentStatusAtUtc: new DateTime(2026, 03, 13, 12, 11, 00, DateTimeKind.Utc)),
-            BuildRecipient(recentCampaign.Id, numbers[3].Id, CampaignRecipientStatus.Sent, currentStatusAtUtc: new DateTime(2026, 03, 13, 12, 12, 00, DateTimeKind.Utc)),
-            BuildRecipient(recentCampaign.Id, numbers[4].Id, CampaignRecipientStatus.Delivered, currentStatusAtUtc: new DateTime(2026, 03, 13, 12, 20, 00, DateTimeKind.Utc)),
-            BuildRecipient(recentCampaign.Id, numbers[5].Id, CampaignRecipientStatus.Undelivered, currentStatusAtUtc: new DateTime(2026, 03, 13, 12, 30, 00, DateTimeKind.Utc), deliveryErrorMessage: "Carrier blocked"),
-            BuildRecipient(recentCampaign.Id, numbers[6].Id, CampaignRecipientStatus.Failed, lastAttemptedAtUtc: new DateTime(2026, 03, 13, 12, 15, 00, DateTimeKind.Utc), providerErrorMessage: "Immediate failure"),
-            BuildRecipient(olderCampaign.Id, numbers[7].Id, CampaignRecipientStatus.Delivered, currentStatusAtUtc: new DateTime(2026, 03, 13, 08, 15, 00, DateTimeKind.Utc)),
-            BuildRecipient(completedCampaign.Id, numbers[8].Id, CampaignRecipientStatus.Delivered, currentStatusAtUtc: new DateTime(2026, 03, 12, 08, 30, 00, DateTimeKind.Utc)),
-            BuildRecipient(completedCampaign.Id, numbers[9].Id, CampaignRecipientStatus.Delivered, currentStatusAtUtc: new DateTime(2026, 03, 12, 08, 40, 00, DateTimeKind.Utc)));
+            BuildRecipient(recentCampaign.Id, numbers[2].Id, CampaignRecipientStatus.Queued, currentStatusAtUtc: new DateTime(2026, 03, 13, 12, 11, 00, DateTimeKind.Utc), createdAtUtc: new DateTime(2026, 03, 13, 12, 11, 00, DateTimeKind.Utc)),
+            BuildRecipient(recentCampaign.Id, numbers[3].Id, CampaignRecipientStatus.Sent, currentStatusAtUtc: new DateTime(2026, 03, 13, 12, 12, 00, DateTimeKind.Utc), createdAtUtc: new DateTime(2026, 03, 13, 12, 12, 00, DateTimeKind.Utc)),
+            BuildRecipient(recentCampaign.Id, numbers[4].Id, CampaignRecipientStatus.Delivered, currentStatusAtUtc: new DateTime(2026, 03, 13, 12, 20, 00, DateTimeKind.Utc), createdAtUtc: new DateTime(2026, 03, 13, 12, 20, 00, DateTimeKind.Utc)),
+            BuildRecipient(recentCampaign.Id, numbers[5].Id, CampaignRecipientStatus.Undelivered, currentStatusAtUtc: new DateTime(2026, 03, 13, 12, 30, 00, DateTimeKind.Utc), createdAtUtc: new DateTime(2026, 03, 13, 12, 30, 00, DateTimeKind.Utc), deliveryErrorMessage: "Carrier blocked"),
+            BuildRecipient(recentCampaign.Id, numbers[6].Id, CampaignRecipientStatus.Failed, lastAttemptedAtUtc: new DateTime(2026, 03, 13, 12, 15, 00, DateTimeKind.Utc), createdAtUtc: new DateTime(2026, 03, 13, 12, 15, 00, DateTimeKind.Utc), providerErrorMessage: "Immediate failure"),
+            BuildRecipient(olderCampaign.Id, numbers[7].Id, CampaignRecipientStatus.Delivered, currentStatusAtUtc: new DateTime(2026, 03, 13, 08, 15, 00, DateTimeKind.Utc), createdAtUtc: new DateTime(2026, 03, 13, 08, 15, 00, DateTimeKind.Utc)),
+            BuildRecipient(completedCampaign.Id, numbers[8].Id, CampaignRecipientStatus.Delivered, currentStatusAtUtc: new DateTime(2026, 03, 12, 08, 30, 00, DateTimeKind.Utc), createdAtUtc: new DateTime(2026, 03, 12, 08, 30, 00, DateTimeKind.Utc)),
+            BuildRecipient(completedCampaign.Id, numbers[9].Id, CampaignRecipientStatus.Delivered, currentStatusAtUtc: new DateTime(2026, 03, 12, 08, 40, 00, DateTimeKind.Utc), createdAtUtc: new DateTime(2026, 03, 12, 08, 40, 00, DateTimeKind.Utc)));
 
         await dbContext.SaveChangesAsync();
         return recentCampaign.Id;
@@ -131,6 +131,7 @@ public sealed class CampaignMonitoringQueryTests
         DateTime? currentStatusAtUtc = null,
         DateTime? submittedAtUtc = null,
         DateTime? lastAttemptedAtUtc = null,
+        DateTime? createdAtUtc = null,
         string? providerErrorMessage = null,
         string? deliveryErrorMessage = null)
     {
@@ -139,6 +140,7 @@ public sealed class CampaignMonitoringQueryTests
             CampaignId = campaignId,
             PhoneNumberRecordId = phoneNumberRecordId,
             Status = status,
+            CreatedAtUtc = createdAtUtc ?? currentStatusAtUtc ?? submittedAtUtc ?? lastAttemptedAtUtc ?? DateTime.UtcNow,
             SubmittedAtUtc = submittedAtUtc,
             LastAttemptedAtUtc = lastAttemptedAtUtc,
             CurrentStatusAtUtc = currentStatusAtUtc,

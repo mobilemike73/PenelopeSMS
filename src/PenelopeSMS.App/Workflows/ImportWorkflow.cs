@@ -40,6 +40,8 @@ public sealed class ImportWorkflow(
                     var persistenceResult = await importPersistenceService.PersistAsync(
                         importBatch.Id,
                         row.CustSid,
+                        row.IsVip,
+                        row.ImportedPhoneSource,
                         normalizedPhoneNumber,
                         cancellationToken);
 

@@ -26,6 +26,9 @@ public sealed class CampaignConfiguration : IEntityTypeConfiguration<Campaign>
         builder.Property(campaign => campaign.BatchSize)
             .IsRequired();
 
+        builder.Property(campaign => campaign.AudienceSegment)
+            .IsRequired();
+
         builder.HasMany(campaign => campaign.Recipients)
             .WithOne(recipient => recipient.Campaign)
             .HasForeignKey(recipient => recipient.CampaignId);

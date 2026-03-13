@@ -1,7 +1,9 @@
 using System.Data;
 using System.Data.Common;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Configuration;
+using PenelopeSMS.Domain.Enums;
 using Oracle.ManagedDataAccess.Client;
 
 namespace PenelopeSMS.Infrastructure.Oracle;
@@ -67,6 +69,7 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
         var custSidOrdinal = reader.GetOrdinal("CUST_SID");
         var phone1Ordinal = TryGetOrdinal(reader, "PHONE1");
         var phone2Ordinal = TryGetOrdinal(reader, "PHONE2");
+        var isVipOrdinal = reader.GetOrdinal("IS_VIP");
 
         if (phone1Ordinal is null && phone2Ordinal is null)
         {
@@ -77,17 +80,26 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
         while (await reader.ReadAsync(cancellationToken))
         {
             var custSid = reader.IsDBNull(custSidOrdinal) ? string.Empty : reader.GetString(custSidOrdinal);
+            var isVip = GetBooleanFlag(reader, isVipOrdinal);
             var phone1 = phone1Ordinal is null ? string.Empty : GetTrimmedString(reader, phone1Ordinal.Value);
             var phone2 = phone2Ordinal is null ? string.Empty : GetTrimmedString(reader, phone2Ordinal.Value);
 
             if (!string.IsNullOrWhiteSpace(phone1))
             {
-                yield return new OracleCustomerPhoneRow(custSid, phone1);
+                yield return new OracleCustomerPhoneRow(
+                    custSid,
+                    phone1,
+                    isVip,
+                    ImportedPhoneSource.Phone1);
             }
 
             if (!string.IsNullOrWhiteSpace(phone2))
             {
-                yield return new OracleCustomerPhoneRow(custSid, phone2);
+                yield return new OracleCustomerPhoneRow(
+                    custSid,
+                    phone2,
+                    isVip,
+                    ImportedPhoneSource.Phone2);
             }
         }
         }
@@ -109,6 +121,31 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
     private static string GetTrimmedString(DbDataReader reader, int ordinal)
     {
         return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal).Trim();
+    }
+
+    private static bool GetBooleanFlag(DbDataReader reader, int ordinal)
+    {
+        if (reader.IsDBNull(ordinal))
+        {
+            return false;
+        }
+
+        var value = reader.GetValue(ordinal);
+
+        return value switch
+        {
+            bool boolValue => boolValue,
+            byte byteValue => byteValue != 0,
+            short shortValue => shortValue != 0,
+            int intValue => intValue != 0,
+            long longValue => longValue != 0,
+            decimal decimalValue => decimalValue != 0,
+            string stringValue => string.Equals(stringValue.Trim(), "1", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(stringValue.Trim(), "true", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(stringValue.Trim(), "y", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(stringValue.Trim(), "yes", StringComparison.OrdinalIgnoreCase),
+            _ => Convert.ToInt32(value, CultureInfo.InvariantCulture) != 0
+        };
     }
 
     private static InvalidOperationException CreateOracleOperationException(

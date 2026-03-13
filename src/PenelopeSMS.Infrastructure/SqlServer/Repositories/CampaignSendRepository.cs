@@ -15,6 +15,7 @@ public sealed class CampaignSendRepository(PenelopeSmsDbContext dbContext)
             .Select(campaign => new CampaignSendSummaryRecord(
                 campaign.Id,
                 campaign.Name,
+                campaign.AudienceSegment,
                 campaign.BatchSize,
                 campaign.Status,
                 campaign.Recipients.Count(recipient => recipient.Status == CampaignRecipientStatus.Pending),
@@ -35,6 +36,7 @@ public sealed class CampaignSendRepository(PenelopeSmsDbContext dbContext)
             .Select(candidate => new CampaignSendContext(
                 candidate.Id,
                 candidate.Name,
+                candidate.AudienceSegment,
                 candidate.TemplateBody,
                 candidate.BatchSize,
                 candidate.Status))
@@ -103,6 +105,7 @@ public sealed class CampaignSendRepository(PenelopeSmsDbContext dbContext)
 public sealed record CampaignSendSummaryRecord(
     int CampaignId,
     string CampaignName,
+    CustomerSegment AudienceSegment,
     int BatchSize,
     CampaignStatus Status,
     int PendingRecipients,
@@ -112,6 +115,7 @@ public sealed record CampaignSendSummaryRecord(
 public sealed record CampaignSendContext(
     int CampaignId,
     string CampaignName,
+    CustomerSegment AudienceSegment,
     string TemplateBody,
     int BatchSize,
     CampaignStatus Status);
