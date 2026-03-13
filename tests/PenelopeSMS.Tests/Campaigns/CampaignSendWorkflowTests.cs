@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.Domain.Entities;
 using PenelopeSMS.Domain.Enums;
@@ -115,6 +117,44 @@ public sealed class CampaignSendWorkflowTests
         Assert.Contains("Sent to +16502530002: accepted as queued", consoleText);
     }
 
+    [Fact]
+    public async Task SendNextBatchAsyncUsesParallelRuntimePathWhenScopeFactoryIsAvailable()
+    {
+        await using var database = await ScopedSqliteTestDatabase.CreateAsync();
+        await using var seedScope = database.Services.CreateAsyncScope();
+        var seedDbContext = seedScope.ServiceProvider.GetRequiredService<PenelopeSmsDbContext>();
+        await SeedCampaignAsync(seedDbContext);
+
+        var sender = database.Sender;
+        var output = new StringWriter();
+
+        await using var workflowScope = database.Services.CreateAsyncScope();
+        var workflow = new CampaignSendWorkflow(
+            workflowScope.ServiceProvider.GetRequiredService<CampaignSendBatchQuery>(),
+            workflowScope.ServiceProvider.GetRequiredService<CampaignSendRepository>(),
+            workflowScope.ServiceProvider.GetRequiredService<ITwilioMessageSender>(),
+            runtimeOutput: output,
+            serviceScopeFactory: workflowScope.ServiceProvider.GetRequiredService<IServiceScopeFactory>());
+
+        var result = await workflow.SendNextBatchAsync(1);
+
+        await using var assertScope = database.Services.CreateAsyncScope();
+        var assertDbContext = assertScope.ServiceProvider.GetRequiredService<PenelopeSmsDbContext>();
+        var recipients = await assertDbContext.CampaignRecipients
+            .OrderBy(recipient => recipient.Id)
+            .ToListAsync();
+
+        Assert.Equal(2, result.AttemptedRecipients);
+        Assert.Equal(2, result.AcceptedRecipients);
+        Assert.Equal(1, result.RemainingPendingRecipients);
+        Assert.True(sender.MaxConcurrentCalls > 1);
+        Assert.Equal(
+            ["+16502530000", "+16502530001"],
+            sender.AttemptedPhoneNumbers.OrderBy(phoneNumber => phoneNumber).ToArray());
+        Assert.All(recipients.Take(2), recipient => Assert.Equal(CampaignRecipientStatus.Submitted, recipient.Status));
+        Assert.Equal(CampaignRecipientStatus.Pending, recipients[2].Status);
+    }
+
     private static CampaignSendWorkflow CreateWorkflow(
         PenelopeSmsDbContext dbContext,
         ITwilioMessageSender twilioMessageSender,
@@ -201,6 +241,58 @@ public sealed class CampaignSendWorkflowTests
         }
     }
 
+    private sealed class TrackingTwilioMessageSender : ITwilioMessageSender
+    {
+        private int currentCalls;
+        private int maxConcurrentCalls;
+        private int sentCount;
+
+        public ConcurrentQueue<string> AttemptedPhoneNumbers { get; } = [];
+
+        public int MaxConcurrentCalls => Volatile.Read(ref maxConcurrentCalls);
+
+        public async Task<TwilioSendResult> SendAsync(
+            string toPhoneNumber,
+            string messageBody,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            AttemptedPhoneNumbers.Enqueue(toPhoneNumber);
+
+            var current = Interlocked.Increment(ref currentCalls);
+            UpdateMaxConcurrency(current);
+
+            try
+            {
+                await Task.Delay(50, cancellationToken);
+                var sequence = Interlocked.Increment(ref sentCount);
+                return TwilioSendResult.Success($"SM-{sequence}", "accepted");
+            }
+            finally
+            {
+                Interlocked.Decrement(ref currentCalls);
+            }
+        }
+
+        private void UpdateMaxConcurrency(int current)
+        {
+            while (true)
+            {
+                var observed = Volatile.Read(ref maxConcurrentCalls);
+
+                if (current <= observed)
+                {
+                    return;
+                }
+
+                if (Interlocked.CompareExchange(ref maxConcurrentCalls, current, observed) == observed)
+                {
+                    return;
+                }
+            }
+        }
+    }
+
     private sealed class SqliteTestDatabase : IAsyncDisposable
     {
         private SqliteTestDatabase(SqliteConnection connection, PenelopeSmsDbContext dbContext)
@@ -232,6 +324,56 @@ public sealed class CampaignSendWorkflowTests
         {
             await DbContext.DisposeAsync();
             await Connection.DisposeAsync();
+        }
+    }
+
+    private sealed class ScopedSqliteTestDatabase : IAsyncDisposable
+    {
+        private ScopedSqliteTestDatabase(
+            string databasePath,
+            ServiceProvider services,
+            TrackingTwilioMessageSender sender)
+        {
+            DatabasePath = databasePath;
+            Services = services;
+            Sender = sender;
+        }
+
+        public string DatabasePath { get; }
+
+        public ServiceProvider Services { get; }
+
+        public TrackingTwilioMessageSender Sender { get; }
+
+        public static async Task<ScopedSqliteTestDatabase> CreateAsync()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
+            var sender = new TrackingTwilioMessageSender();
+            var services = new ServiceCollection();
+
+            services.AddDbContext<PenelopeSmsDbContext>(options =>
+                options.UseSqlite($"Data Source={databasePath}"));
+            services.AddScoped<CampaignSendBatchQuery>();
+            services.AddScoped<CampaignSendRepository>();
+            services.AddSingleton<ITwilioMessageSender>(sender);
+
+            var serviceProvider = services.BuildServiceProvider();
+
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<PenelopeSmsDbContext>();
+            await dbContext.Database.EnsureCreatedAsync();
+
+            return new ScopedSqliteTestDatabase(databasePath, serviceProvider, sender);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await Services.DisposeAsync();
+
+            if (File.Exists(DatabasePath))
+            {
+                File.Delete(DatabasePath);
+            }
         }
     }
 }

@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.Infrastructure.SqlServer.Queries;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
@@ -10,8 +13,10 @@ public sealed class CampaignSendWorkflow(
     CampaignSendRepository campaignSendRepository,
     ITwilioMessageSender twilioMessageSender,
     IOperationsMonitor? runtimeOperationsMonitor = null,
-    TextWriter? runtimeOutput = null) : ICampaignSendWorkflow
+    TextWriter? runtimeOutput = null,
+    IServiceScopeFactory? serviceScopeFactory = null) : ICampaignSendWorkflow
 {
+    private const int MaxParallelSends = 4;
     private readonly IOperationsMonitor operationsMonitor = runtimeOperationsMonitor ?? NullOperationsMonitor.Instance;
     private readonly TextWriter output = runtimeOutput ?? Console.Out;
 
@@ -40,38 +45,106 @@ public sealed class CampaignSendWorkflow(
         var acceptedRecipients = 0;
         var failedRecipients = 0;
 
-        foreach (var recipient in batch)
+        if (serviceScopeFactory is null)
         {
-            var sendResult = await twilioMessageSender.SendAsync(
-                recipient.CanonicalPhoneNumber,
-                campaign.TemplateBody,
-                cancellationToken);
-
-            await campaignSendRepository.ApplySendResultAsync(
-                recipient.CampaignRecipientId,
-                sendResult,
-                cancellationToken);
-
-            if (sendResult.IsSuccess)
+            foreach (var recipient in batch)
             {
-                acceptedRecipients++;
-                output.WriteLine(
-                    $"Sent to {recipient.CanonicalPhoneNumber}: accepted as {sendResult.InitialStatus ?? "submitted"} (SID: {sendResult.MessageSid ?? "n/a"}).");
-            }
-            else
-            {
-                failedRecipients++;
-                output.WriteLine(
-                    $"Send failed for {recipient.CanonicalPhoneNumber}: {sendResult.ErrorCode ?? "no-code"} | {sendResult.ErrorMessage ?? "Unknown provider error"}");
-                operationsMonitor.Warn(
-                    OperationType.CampaignSend,
-                    $"Campaign send failed for {recipient.CanonicalPhoneNumber}: {sendResult.ErrorMessage ?? sendResult.ErrorCode ?? "Unknown provider error"}",
-                    jobId);
-            }
+                var sendResult = await twilioMessageSender.SendAsync(
+                    recipient.CanonicalPhoneNumber,
+                    campaign.TemplateBody,
+                    cancellationToken);
 
-            operationsMonitor.UpdateJob(
-                jobId,
-                $"Processed {acceptedRecipients + failedRecipients}/{batch.Count}, Accepted {acceptedRecipients}, Failed {failedRecipients}");
+                await campaignSendRepository.ApplySendResultAsync(
+                    recipient.CampaignRecipientId,
+                    sendResult,
+                    cancellationToken);
+
+                if (sendResult.IsSuccess)
+                {
+                    acceptedRecipients++;
+                    output.WriteLine(
+                        $"Sent to {recipient.CanonicalPhoneNumber}: accepted as {sendResult.InitialStatus ?? "submitted"} (SID: {sendResult.MessageSid ?? "n/a"}).");
+                }
+                else
+                {
+                    failedRecipients++;
+                    output.WriteLine(
+                        $"Send failed for {recipient.CanonicalPhoneNumber}: {sendResult.ErrorCode ?? "no-code"} | {sendResult.ErrorMessage ?? "Unknown provider error"}");
+                    operationsMonitor.Warn(
+                        OperationType.CampaignSend,
+                        $"Campaign send failed for {recipient.CanonicalPhoneNumber}: {sendResult.ErrorMessage ?? sendResult.ErrorCode ?? "Unknown provider error"}",
+                        jobId);
+                }
+
+                operationsMonitor.UpdateJob(
+                    jobId,
+                    $"Processed {acceptedRecipients + failedRecipients}/{batch.Count}, Accepted {acceptedRecipients}, Failed {failedRecipients}");
+            }
+        }
+        else
+        {
+            var outcomeMessages = new ConcurrentBag<CampaignSendOutcomeMessage>();
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Math.Min(MaxParallelSends, batch.Count == 0 ? 1 : batch.Count),
+                CancellationToken = cancellationToken
+            };
+
+            await Parallel.ForEachAsync(
+                batch.Select((recipient, index) => new IndexedCampaignRecipient(index, recipient)),
+                parallelOptions,
+                async (item, token) =>
+                {
+                    await using var scope = serviceScopeFactory.CreateAsyncScope();
+                    var scopedSender = scope.ServiceProvider.GetRequiredService<ITwilioMessageSender>();
+                    var scopedRepository = scope.ServiceProvider.GetRequiredService<CampaignSendRepository>();
+                    var sendResult = await scopedSender.SendAsync(
+                        item.Recipient.CanonicalPhoneNumber,
+                        campaign.TemplateBody,
+                        token);
+
+                    await scopedRepository.ApplySendResultAsync(
+                        item.Recipient.CampaignRecipientId,
+                        sendResult,
+                        token);
+
+                    var outputMessage = sendResult.IsSuccess
+                        ? $"Sent to {item.Recipient.CanonicalPhoneNumber}: accepted as {sendResult.InitialStatus ?? "submitted"} (SID: {sendResult.MessageSid ?? "n/a"})."
+                        : $"Send failed for {item.Recipient.CanonicalPhoneNumber}: {sendResult.ErrorCode ?? "no-code"} | {sendResult.ErrorMessage ?? "Unknown provider error"}";
+                    var warningMessage = sendResult.IsSuccess
+                        ? null
+                        : $"Campaign send failed for {item.Recipient.CanonicalPhoneNumber}: {sendResult.ErrorMessage ?? sendResult.ErrorCode ?? "Unknown provider error"}";
+
+                    outcomeMessages.Add(new CampaignSendOutcomeMessage(item.Index, outputMessage, warningMessage));
+
+                    if (sendResult.IsSuccess)
+                    {
+                        var accepted = Interlocked.Increment(ref acceptedRecipients);
+                        var processedCount = accepted + Volatile.Read(ref failedRecipients);
+                        operationsMonitor.UpdateJob(
+                            jobId,
+                            $"Processed {processedCount}/{batch.Count}, Accepted {accepted}, Failed {Volatile.Read(ref failedRecipients)}");
+                        return;
+                    }
+
+                    {
+                        var failed = Interlocked.Increment(ref failedRecipients);
+                        var processedCount = Volatile.Read(ref acceptedRecipients) + failed;
+                        operationsMonitor.UpdateJob(
+                            jobId,
+                            $"Processed {processedCount}/{batch.Count}, Accepted {Volatile.Read(ref acceptedRecipients)}, Failed {Volatile.Read(ref failedRecipients)}");
+                    }
+                });
+
+            foreach (var outcome in outcomeMessages.OrderBy(message => message.Index))
+            {
+                output.WriteLine(outcome.OutputMessage);
+
+                if (outcome.WarningMessage is not null)
+                {
+                    operationsMonitor.Warn(OperationType.CampaignSend, outcome.WarningMessage, jobId);
+                }
+            }
         }
 
         var refreshedCampaigns = await campaignSendRepository.ListCampaignsAsync(cancellationToken);
@@ -89,4 +162,11 @@ public sealed class CampaignSendWorkflow(
             FailedRecipients: failedRecipients,
             RemainingPendingRecipients: refreshedCampaign.PendingRecipients);
     }
+
+    private sealed record IndexedCampaignRecipient(int Index, CampaignSendBatchRecord Recipient);
+
+    private sealed record CampaignSendOutcomeMessage(
+        int Index,
+        string OutputMessage,
+        string? WarningMessage);
 }
