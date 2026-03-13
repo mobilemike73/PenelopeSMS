@@ -8,6 +8,20 @@ public sealed class PhoneNumberNormalizer : IPhoneNumberNormalizer
 
     public PhoneNumberNormalizationResult Normalize(string rawPhoneNumber, string defaultRegion)
     {
+        if (TryNormalize(rawPhoneNumber, defaultRegion, out var normalizedPhoneNumber, out var errorMessage))
+        {
+            return normalizedPhoneNumber!;
+        }
+
+        throw new InvalidOperationException(errorMessage);
+    }
+
+    public bool TryNormalize(
+        string rawPhoneNumber,
+        string defaultRegion,
+        out PhoneNumberNormalizationResult? normalizedPhoneNumber,
+        out string? errorMessage)
+    {
         if (string.IsNullOrWhiteSpace(rawPhoneNumber))
         {
             throw new ArgumentException("A raw phone number is required.", nameof(rawPhoneNumber));
@@ -26,22 +40,27 @@ public sealed class PhoneNumberNormalizer : IPhoneNumberNormalizer
         {
             parsedNumber = phoneNumberUtil.Parse(rawPhoneNumber, normalizedRegion);
         }
-        catch (NumberParseException ex)
+        catch (NumberParseException)
         {
-            throw new InvalidOperationException(
-                $"The phone number '{rawPhoneNumber}' could not be parsed for region '{normalizedRegion}'.",
-                ex);
+            normalizedPhoneNumber = null;
+            errorMessage =
+                $"The phone number '{rawPhoneNumber}' could not be parsed for region '{normalizedRegion}'.";
+            return false;
         }
 
         if (!phoneNumberUtil.IsValidNumber(parsedNumber))
         {
-            throw new InvalidOperationException(
-                $"The phone number '{rawPhoneNumber}' is not valid for region '{normalizedRegion}'.");
+            normalizedPhoneNumber = null;
+            errorMessage =
+                $"The phone number '{rawPhoneNumber}' is not valid for region '{normalizedRegion}'.";
+            return false;
         }
 
         var canonicalPhoneNumber = phoneNumberUtil.Format(parsedNumber, PhoneNumberFormat.E164);
         var regionCode = phoneNumberUtil.GetRegionCodeForNumber(parsedNumber) ?? normalizedRegion;
 
-        return new PhoneNumberNormalizationResult(rawPhoneNumber, canonicalPhoneNumber, regionCode);
+        normalizedPhoneNumber = new PhoneNumberNormalizationResult(rawPhoneNumber, canonicalPhoneNumber, regionCode);
+        errorMessage = null;
+        return true;
     }
 }

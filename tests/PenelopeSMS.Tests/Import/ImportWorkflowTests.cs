@@ -111,6 +111,80 @@ public sealed class ImportWorkflowTests
         Assert.True(links[1].IsVip);
     }
 
+    [Fact]
+    public async Task RunAsyncClearsExistingImportDerivedDataBeforeReload()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+
+        var previousBatch = new ImportBatch
+        {
+            Status = ImportBatch.CompletedStatus,
+            CompletedAtUtc = DateTime.UtcNow
+        };
+        var previousPhoneRecord = new PhoneNumberRecord
+        {
+            CanonicalPhoneNumber = "+16505550100"
+        };
+        var previousCampaign = new Campaign
+        {
+            Name = "Old Campaign",
+            TemplateFilePath = @"C:\templates\old.txt",
+            TemplateBody = "Old",
+            BatchSize = 1
+        };
+
+        database.DbContext.ImportBatches.Add(previousBatch);
+        database.DbContext.PhoneNumberRecords.Add(previousPhoneRecord);
+        database.DbContext.Campaigns.Add(previousCampaign);
+        await database.DbContext.SaveChangesAsync();
+
+        database.DbContext.CustomerPhoneLinks.Add(new CustomerPhoneLink
+        {
+            CustSid = "OLD-CUST",
+            IsVip = false,
+            ImportedPhoneSource = ImportedPhoneSource.Phone1,
+            RawPhoneNumber = "6505550100",
+            ImportBatchId = previousBatch.Id,
+            PhoneNumberRecordId = previousPhoneRecord.Id
+        });
+        database.DbContext.CampaignRecipients.Add(new CampaignRecipient
+        {
+            CampaignId = previousCampaign.Id,
+            PhoneNumberRecordId = previousPhoneRecord.Id,
+            Status = CampaignRecipientStatus.Pending
+        });
+        await database.DbContext.SaveChangesAsync();
+
+        var existingRecipient = await database.DbContext.CampaignRecipients.SingleAsync();
+        database.DbContext.CampaignRecipientStatusHistory.Add(new CampaignRecipientStatusHistory
+        {
+            CampaignRecipientId = existingRecipient.Id,
+            Status = CampaignRecipientStatus.Pending,
+            ProviderEventAtUtc = DateTime.UtcNow,
+            RawPayloadJson = "{}",
+            CallbackFingerprint = "old-fingerprint",
+            ReceivedAtUtc = DateTime.UtcNow
+        });
+        await database.DbContext.SaveChangesAsync();
+
+        var workflow = CreateWorkflow(
+            database.DbContext,
+            new FakeOraclePhoneImportReader(
+            [
+                new OracleCustomerPhoneRow("NEW-CUST", "650-253-0000", false, ImportedPhoneSource.Phone1)
+            ]));
+
+        await workflow.RunAsync();
+
+        Assert.Equal(1, await database.DbContext.ImportBatches.CountAsync());
+        Assert.Equal(1, await database.DbContext.PhoneNumberRecords.CountAsync());
+        Assert.Equal(1, await database.DbContext.CustomerPhoneLinks.CountAsync());
+        Assert.Equal(0, await database.DbContext.CampaignRecipientStatusHistory.CountAsync());
+        Assert.Equal(0, await database.DbContext.CampaignRecipients.CountAsync());
+        Assert.Equal(0, await database.DbContext.Campaigns.CountAsync());
+        Assert.DoesNotContain(await database.DbContext.CustomerPhoneLinks.Select(link => link.CustSid).ToListAsync(), custSid => custSid == "OLD-CUST");
+    }
+
     private ImportWorkflow CreateWorkflow(
         PenelopeSmsDbContext dbContext,
         IOraclePhoneImportReader oraclePhoneImportReader)

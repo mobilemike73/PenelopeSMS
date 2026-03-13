@@ -141,6 +141,30 @@ public sealed class ImportPersistenceService(PenelopeSmsDbContext dbContext)
         return importBatch;
     }
 
+    public async Task ResetImportDataAsync(CancellationToken cancellationToken = default)
+    {
+        await dbContext.CampaignRecipientStatusHistory.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.CampaignRecipients.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.Campaigns.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.CustomerPhoneLinks.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.PhoneNumberRecords.ExecuteDeleteAsync(cancellationToken);
+        await dbContext.ImportBatches.ExecuteDeleteAsync(cancellationToken);
+
+        if (dbContext.Database.IsSqlServer())
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                DBCC CHECKIDENT ('CampaignRecipientStatusHistory', RESEED, 0);
+                DBCC CHECKIDENT ('CampaignRecipients', RESEED, 0);
+                DBCC CHECKIDENT ('Campaigns', RESEED, 0);
+                DBCC CHECKIDENT ('CustomerPhoneLinks', RESEED, 0);
+                DBCC CHECKIDENT ('PhoneNumberRecords', RESEED, 0);
+                DBCC CHECKIDENT ('ImportBatches', RESEED, 0);
+                """,
+                cancellationToken);
+        }
+    }
+
     public async Task<int> PersistManyAsync(
         int importBatchId,
         IReadOnlyCollection<PersistPhoneNumberRequest> requests,

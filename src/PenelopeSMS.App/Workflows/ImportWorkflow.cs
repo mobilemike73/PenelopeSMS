@@ -22,6 +22,7 @@ public sealed class ImportWorkflow(
     public async Task<ImportWorkflowResult> RunAsync(CancellationToken cancellationToken = default)
     {
         var jobId = operationsMonitor.StartJob(OperationType.Import, "Oracle import", "Starting import");
+        await importPersistenceService.ResetImportDataAsync(cancellationToken);
         var importBatch = await importPersistenceService.StartBatchAsync(cancellationToken);
         var rowsRead = 0;
         var rowsImported = 0;
@@ -36,15 +37,26 @@ public sealed class ImportWorkflow(
 
                 try
                 {
-                    var normalizedPhoneNumber = phoneNumberNormalizer.Normalize(
+                    if (!phoneNumberNormalizer.TryNormalize(
                         row.PhoneNumber,
-                        oracleOptions.Value.DefaultRegion);
+                        oracleOptions.Value.DefaultRegion,
+                        out var normalizedPhoneNumber,
+                        out var normalizationErrorMessage))
+                    {
+                        rowsRejected++;
+                        output.WriteLine($"Rejected row for CUST_SID {row.CustSid}: {normalizationErrorMessage}");
+                        operationsMonitor.Warn(
+                            OperationType.Import,
+                            $"Rejected row for CUST_SID {row.CustSid}: {normalizationErrorMessage}",
+                            jobId);
+                        continue;
+                    }
 
                     bufferedRows.Add(new PersistPhoneNumberRequest(
                         row.CustSid,
                         row.IsVip,
                         row.ImportedPhoneSource,
-                        normalizedPhoneNumber.RawInput,
+                        normalizedPhoneNumber!.RawInput,
                         normalizedPhoneNumber.CanonicalPhoneNumber));
 
                     if (bufferedRows.Count >= ImportChunkSize)

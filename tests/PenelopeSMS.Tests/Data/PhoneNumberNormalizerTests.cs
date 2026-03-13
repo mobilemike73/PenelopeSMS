@@ -24,4 +24,14 @@ public sealed class PhoneNumberNormalizerTests
 
         Assert.Contains("not valid", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void TryNormalizeReturnsFalseForInvalidNumbersWithoutThrowing()
+    {
+        var success = normalizer.TryNormalize("123", "US", out var normalizedPhoneNumber, out var errorMessage);
+
+        Assert.False(success);
+        Assert.Null(normalizedPhoneNumber);
+        Assert.Contains("not valid", errorMessage, StringComparison.OrdinalIgnoreCase);
+    }
 }
