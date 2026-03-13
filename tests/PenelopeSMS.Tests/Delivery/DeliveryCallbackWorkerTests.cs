@@ -97,6 +97,31 @@ public sealed class DeliveryCallbackWorkerTests
         Assert.Equal(0, sqsClient.DeleteCalls);
     }
 
+    [Theory]
+    [InlineData("delivered", ConsoleColor.Green)]
+    [InlineData("DELIVERED", ConsoleColor.Green)]
+    [InlineData("failed", ConsoleColor.Red)]
+    public void GetMessageStatusConsoleColorReturnsExpectedColor(
+        string messageStatus,
+        ConsoleColor expectedColor)
+    {
+        var color = DeliveryCallbackWorker.GetMessageStatusConsoleColor(messageStatus);
+
+        Assert.Equal(expectedColor, color);
+    }
+
+    [Theory]
+    [InlineData("queued")]
+    [InlineData("sent")]
+    [InlineData("undelivered")]
+    [InlineData(null)]
+    public void GetMessageStatusConsoleColorReturnsNullForUncoloredStatuses(string? messageStatus)
+    {
+        var color = DeliveryCallbackWorker.GetMessageStatusConsoleColor(messageStatus);
+
+        Assert.Null(color);
+    }
+
     private sealed class FakeAwsSqsClient(SqsQueueMessage? nextMessage) : IAwsSqsClient
     {
         public int DeleteCalls { get; private set; }

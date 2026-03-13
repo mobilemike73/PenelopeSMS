@@ -107,7 +107,7 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         try
         {
             var result = await processMessageAsync(message, stoppingToken);
-            output.WriteLine(result.ConsoleMessage);
+            WriteLineWithOptionalStatusColor(result.ConsoleMessage, result.MessageStatus);
             operationsMonitor.RecordLiveDeliveryLine(result.ConsoleMessage, DateTime.UtcNow);
             operationsMonitor.UpdateJob(activeJobId!, $"Last outcome: {result.Outcome}");
             operationsMonitor.ResolveWarnings(jobId: activeJobId);
@@ -169,5 +169,38 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         await using var scope = serviceScopeFactory.CreateAsyncScope();
         var workflow = scope.ServiceProvider.GetRequiredService<IDeliveryCallbackProcessingWorkflow>();
         return await workflow.ProcessAsync(message, cancellationToken);
+    }
+
+    private void WriteLineWithOptionalStatusColor(string message, string? messageStatus)
+    {
+        var color = GetMessageStatusConsoleColor(messageStatus);
+
+        if (color is null || !ReferenceEquals(output, Console.Out) || Console.IsOutputRedirected)
+        {
+            output.WriteLine(message);
+            return;
+        }
+
+        var previousColor = Console.ForegroundColor;
+
+        try
+        {
+            Console.ForegroundColor = color.Value;
+            output.WriteLine(message);
+        }
+        finally
+        {
+            Console.ForegroundColor = previousColor;
+        }
+    }
+
+    internal static ConsoleColor? GetMessageStatusConsoleColor(string? messageStatus)
+    {
+        return messageStatus?.Trim().ToLowerInvariant() switch
+        {
+            "delivered" => ConsoleColor.Green,
+            "failed" => ConsoleColor.Red,
+            _ => null
+        };
     }
 }

@@ -137,7 +137,8 @@ public sealed class DeliveryCallbackProcessingWorkflow(
         return new DeliveryCallbackProcessingResult(
             ShouldDeleteMessage: applyResult.ShouldDeleteMessage,
             Outcome: applyResult.Outcome,
-            ConsoleMessage: BuildConsoleMessage(message.MessageId, envelope, applyResult));
+            ConsoleMessage: BuildConsoleMessage(message.MessageId, envelope, applyResult),
+            MessageStatus: envelope.MessageStatus);
     }
 
     private static string BuildConsoleMessage(
