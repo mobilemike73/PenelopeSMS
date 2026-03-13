@@ -30,7 +30,17 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
         }
 
         await using var connection = new OracleConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
+        try
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+        catch (OracleException exception)
+        {
+            throw CreateOracleOperationException(
+                "open Oracle connection",
+                connection.DataSource,
+                exception);
+        }
 
         await using var command = connection.CreateCommand();
         command.BindByName = true;
@@ -38,7 +48,22 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
         command.CommandText = importQuery;
         command.CommandTimeout = commandTimeoutSeconds;
 
-        await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken);
+        DbDataReader reader;
+
+        try
+        {
+            reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken);
+        }
+        catch (OracleException exception)
+        {
+            throw CreateOracleOperationException(
+                "execute Oracle import query",
+                connection.DataSource,
+                exception);
+        }
+
+        await using (reader)
+        {
         var custSidOrdinal = reader.GetOrdinal("CUST_SID");
         var phone1Ordinal = TryGetOrdinal(reader, "PHONE1");
         var phone2Ordinal = TryGetOrdinal(reader, "PHONE2");
@@ -65,9 +90,10 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
                 yield return new OracleCustomerPhoneRow(custSid, phone2);
             }
         }
+        }
     }
 
-    private static int? TryGetOrdinal(IDataRecord record, string columnName)
+    private static int? TryGetOrdinal(DbDataReader record, string columnName)
     {
         for (var index = 0; index < record.FieldCount; index++)
         {
@@ -83,5 +109,16 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
     private static string GetTrimmedString(DbDataReader reader, int ordinal)
     {
         return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal).Trim();
+    }
+
+    private static InvalidOperationException CreateOracleOperationException(
+        string operation,
+        string? dataSource,
+        OracleException exception)
+    {
+        var endpoint = string.IsNullOrWhiteSpace(dataSource) ? "<unknown>" : dataSource;
+        return new InvalidOperationException(
+            $"Failed to {operation} against '{endpoint}'. Oracle error {exception.Number}: {exception.Message}",
+            exception);
     }
 }

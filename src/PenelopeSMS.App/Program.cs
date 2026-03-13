@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PenelopeSMS.App.Menu;
@@ -15,6 +17,8 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        EnsureDebugConsole();
+
         using var host = BuildHost(args);
         await host.StartAsync();
 
@@ -79,4 +83,28 @@ public static class Program
         builder.Services.AddScoped<MonitoringScreenRenderer>();
         builder.Services.AddScoped<MainMenu>();
     }
+
+    private static void EnsureDebugConsole()
+    {
+        if (!Debugger.IsAttached || !OperatingSystem.IsWindows() || GetConsoleWindow() != IntPtr.Zero)
+        {
+            return;
+        }
+
+        if (!AllocConsole())
+        {
+            return;
+        }
+
+        Console.SetIn(new StreamReader(Console.OpenStandardInput()));
+        Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
+        Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
+        Console.Title = "PenelopeSMS Debug";
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool AllocConsole();
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint GetConsoleWindow();
 }
