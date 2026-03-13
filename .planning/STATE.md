@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: active
-last_updated: "2026-03-13T00:38:47Z"
+last_updated: "2026-03-13T01:15:00Z"
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 12
+  total_plans: 15
   completed_plans: 12
 ---
 
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-03-12)
 ## Current Position
 
 Phase: 5 of 5 (Operator Monitoring)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-12 — Completed Phase 4 delivery callback pipeline and runtime setup
+Plan: 0 of 3 in current phase
+Status: Ready to execute
+Last activity: 2026-03-12 — Planned Phase 5 operator monitoring
 
 Progress: [████████░░] 80%
 
@@ -73,6 +73,8 @@ Recent decisions affecting current work:
 - Phase 4: Use a Twilio `StatusCallback` bridge through API Gateway, Lambda, and SQS rather than per-message polling or a public console endpoint.
 - Phase 4: Keep delivery history idempotent with fingerprinted callback rows, unmatched/rejected callback buckets, and current-state precedence based on provider event time.
 - Phase 4: Run callback processing continuously as a hosted sequential worker while the console app is open, and warn operators when callback URL wiring is missing.
+- Phase 5: Use one shared monitoring surface with auto-refreshing repaint behavior, a campaign drill-in view, and completed campaigns hidden unless explicitly requested.
+- Phase 5: Keep monitoring summary-first, combine unmatched and rejected callbacks into one callback-issues bucket, and track live jobs plus warnings through a shared runtime monitor rather than console scraping.
 
 ### Pending Todos
 
@@ -84,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12 20:38
-Stopped at: Phase 4 complete; Phase 5 ready for planning
+Last session: 2026-03-12 21:15
+Stopped at: Phase 5 planned; ready to execute
 Resume file: .planning/ROADMAP.md

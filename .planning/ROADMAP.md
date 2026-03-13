@@ -91,7 +91,12 @@ Plans:
   1. Operator can view campaign totals by pending, submitted, sent, delivered, undelivered, and failed states.
   2. Import, enrichment, campaign send, and callback-processing jobs emit useful console-visible progress and error information.
   3. The app provides enough local visibility to understand current campaign state without querying Twilio message records one by one.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 05-01: Add monitoring read models for campaign progress and persisted issue summaries
+- [ ] 05-02: Build shared runtime job monitoring and workflow instrumentation
+- [ ] 05-03: Add the monitoring screen, drill-in flow, and runtime integration coverage
 
 ## Progress
 
@@ -104,4 +109,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Number Intelligence | 3/3 | Complete | 2026-03-12 |
 | 3. Campaign Execution | 3/3 | Complete | 2026-03-12 |
 | 4. Delivery Pipeline | 3/3 | Complete | 2026-03-12 |
-| 5. Operator Monitoring | 0/TBD | Not started | - |
+| 5. Operator Monitoring | 0/3 | Planned | - |
