@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PenelopeSMS.App.Menu;
+using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.App.Options;
 using PenelopeSMS.App.Services;
 using PenelopeSMS.App.Templates;
@@ -59,6 +60,7 @@ public static class Program
             .BindConfiguration(AwsOptions.SectionName);
 
         builder.Services.AddInfrastructure(builder.Configuration);
+        builder.Services.AddSingleton<IOperationsMonitor, OperationsMonitor>();
         builder.Services.AddScoped<IPlainTextTemplateLoader, FilePlainTextTemplateLoader>();
         builder.Services.AddScoped<ICampaignCreationWorkflow, CampaignCreationWorkflow>();
         builder.Services.AddScoped<ICampaignSendWorkflow, CampaignSendWorkflow>();
