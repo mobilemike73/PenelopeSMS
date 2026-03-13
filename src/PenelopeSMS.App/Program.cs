@@ -16,6 +16,7 @@ public static class Program
     public static async Task<int> Main(string[] args)
     {
         using var host = BuildHost(args);
+        WriteConfigurationDiagnostics(host.Services);
         await host.StartAsync();
 
         try
@@ -34,7 +35,11 @@ public static class Program
         string[]? args = null,
         Action<HostApplicationBuilder>? configureBuilder = null)
     {
-        var builder = Host.CreateApplicationBuilder(args ?? []);
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            Args = args ?? [],
+            ContentRootPath = AppContext.BaseDirectory
+        });
         configureBuilder?.Invoke(builder);
 
         ConfigureServices(builder);
@@ -76,7 +81,33 @@ public static class Program
         builder.Services.AddScoped<EnrichmentMenuAction>();
         builder.Services.AddScoped<ImportMenuAction>();
         builder.Services.AddScoped<MonitoringMenuAction>();
+        builder.Services.AddScoped<MonitoringHtmlReportRenderer>();
         builder.Services.AddScoped<MonitoringScreenRenderer>();
         builder.Services.AddScoped<MainMenu>();
+    }
+
+    private static void WriteConfigurationDiagnostics(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+
+        Console.WriteLine($"Configuration content root: {environment.ContentRootPath}");
+        WriteConfigFile(environment.ContentRootPath, "appsettings.json");
+        WriteConfigFile(environment.ContentRootPath, $"appsettings.{environment.EnvironmentName}.json");
+        Console.WriteLine();
+    }
+
+    private static void WriteConfigFile(string contentRootPath, string fileName)
+    {
+        var filePath = Path.Combine(contentRootPath, fileName);
+        Console.WriteLine($"[{filePath}]");
+
+        if (!File.Exists(filePath))
+        {
+            Console.WriteLine("File not found.");
+            return;
+        }
+
+        Console.WriteLine(File.ReadAllText(filePath));
     }
 }
