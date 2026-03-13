@@ -24,9 +24,24 @@ public sealed class CampaignRecipient
 
     public string? ProviderErrorMessage { get; set; }
 
+    public DateTime? CurrentStatusAtUtc { get; set; }
+
+    public DeliveryEventTimeSource CurrentStatusTimeSource { get; set; } =
+        DeliveryEventTimeSource.Unknown;
+
+    public string? CurrentStatusRawValue { get; set; }
+
+    public DateTime? LastDeliveryCallbackReceivedAtUtc { get; set; }
+
+    public string? DeliveryErrorCode { get; set; }
+
+    public string? DeliveryErrorMessage { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public DateTime? LastAttemptedAtUtc { get; set; }
 
     public DateTime? SubmittedAtUtc { get; set; }
+
+    public ICollection<CampaignRecipientStatusHistory> StatusHistory { get; } = new List<CampaignRecipientStatusHistory>();
 }

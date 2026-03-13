@@ -24,6 +24,15 @@ public sealed class CampaignRecipientConfiguration : IEntityTypeConfiguration<Ca
         builder.Property(recipient => recipient.ProviderErrorMessage)
             .HasMaxLength(1024);
 
+        builder.Property(recipient => recipient.CurrentStatusRawValue)
+            .HasMaxLength(128);
+
+        builder.Property(recipient => recipient.DeliveryErrorCode)
+            .HasMaxLength(64);
+
+        builder.Property(recipient => recipient.DeliveryErrorMessage)
+            .HasMaxLength(1024);
+
         builder.HasIndex(recipient => new
             {
                 recipient.CampaignId,
@@ -34,5 +43,9 @@ public sealed class CampaignRecipientConfiguration : IEntityTypeConfiguration<Ca
         builder.HasOne(recipient => recipient.PhoneNumberRecord)
             .WithMany(phoneNumberRecord => phoneNumberRecord.CampaignRecipients)
             .HasForeignKey(recipient => recipient.PhoneNumberRecordId);
+
+        builder.HasMany(recipient => recipient.StatusHistory)
+            .WithOne(history => history.CampaignRecipient)
+            .HasForeignKey(history => history.CampaignRecipientId);
     }
 }

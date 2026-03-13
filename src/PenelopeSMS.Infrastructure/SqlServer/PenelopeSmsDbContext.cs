@@ -15,6 +15,12 @@ public sealed class PenelopeSmsDbContext(DbContextOptions<PenelopeSmsDbContext> 
 
     public DbSet<CampaignRecipient> CampaignRecipients => Set<CampaignRecipient>();
 
+    public DbSet<CampaignRecipientStatusHistory> CampaignRecipientStatusHistory => Set<CampaignRecipientStatusHistory>();
+
+    public DbSet<UnmatchedDeliveryCallback> UnmatchedDeliveryCallbacks => Set<UnmatchedDeliveryCallback>();
+
+    public DbSet<RejectedDeliveryCallback> RejectedDeliveryCallbacks => Set<RejectedDeliveryCallback>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PenelopeSmsDbContext).Assembly);
