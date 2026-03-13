@@ -100,6 +100,39 @@ public sealed class DeliveryCallbackRepositoryTests
     }
 
     [Fact]
+    public async Task ApplyAsyncAllowsForwardProgressEvenWhenProviderTimestampIsOlderThanCurrentStatus()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        var recipient = await SeedRecipientAsync(database.DbContext);
+        recipient.Status = CampaignRecipientStatus.Sent;
+        recipient.CurrentStatusAtUtc = new DateTime(2026, 03, 13, 20, 01, 44, DateTimeKind.Utc);
+        recipient.LastDeliveryCallbackReceivedAtUtc = recipient.CurrentStatusAtUtc;
+        await database.DbContext.SaveChangesAsync();
+
+        var repository = new DeliveryCallbackRepository(database.DbContext);
+        var result = await repository.ApplyAsync(new DeliveryCallbackEnvelopeMessage(
+            MessageSid: "SM123",
+            MessageStatus: "delivered",
+            ProviderErrorCode: null,
+            ProviderErrorMessage: null,
+            ProviderEventRawValue: "2603132001",
+            RawPayloadJson: "{\"Body\":\"delivered later but minute-rounded\"}",
+            ReceivedAtUtc: new DateTime(2026, 03, 13, 20, 01, 46, DateTimeKind.Utc)));
+
+        var storedRecipient = await database.DbContext.CampaignRecipients
+            .Include(candidate => candidate.StatusHistory)
+            .SingleAsync();
+
+        Assert.Equal("applied", result.Outcome);
+        Assert.Equal(CampaignRecipientStatus.Delivered, storedRecipient.Status);
+        Assert.Equal(new DateTime(2026, 03, 13, 20, 01, 00, DateTimeKind.Utc), storedRecipient.CurrentStatusAtUtc);
+        Assert.Equal(DeliveryEventTimeSource.RawDlrDoneDate, storedRecipient.CurrentStatusTimeSource);
+        var historyEntry = Assert.Single(storedRecipient.StatusHistory);
+        Assert.Equal(CampaignRecipientStatus.Delivered, historyEntry.Status);
+        Assert.Equal(new DateTime(2026, 03, 13, 20, 01, 00, DateTimeKind.Utc), historyEntry.ProviderEventAtUtc);
+    }
+
+    [Fact]
     public async Task ApplyAsyncStoresUnknownMessageSidInUnmatchedCallbacks()
     {
         await using var database = await SqliteTestDatabase.CreateAsync();

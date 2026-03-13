@@ -46,16 +46,18 @@ public sealed class DeliveryCallbackRepository(PenelopeSmsDbContext dbContext)
 
         var incomingStatus = MapStatus(envelope.MessageStatus);
         var (providerEventAtUtc, timeSource, rawValue) = ResolveProviderEventTime(envelope);
+        var isForwardProgress = IsForwardProgress(recipient.Status, incomingStatus);
 
-        if (recipient.CurrentStatusAtUtc.HasValue
-            && providerEventAtUtc < recipient.CurrentStatusAtUtc.Value)
+        if (ShouldDiscardForStatusRegression(recipient.Status, incomingStatus))
         {
             recipient.LastDeliveryCallbackReceivedAtUtc = MaxTimestamp(recipient.LastDeliveryCallbackReceivedAtUtc, envelope.ReceivedAtUtc);
             await dbContext.SaveChangesAsync(cancellationToken);
             return DeliveryCallbackApplyResult.OlderDiscarded();
         }
 
-        if (ShouldDiscardForStatusRegression(recipient.Status, incomingStatus))
+        if (recipient.CurrentStatusAtUtc.HasValue
+            && providerEventAtUtc < recipient.CurrentStatusAtUtc.Value
+            && !isForwardProgress)
         {
             recipient.LastDeliveryCallbackReceivedAtUtc = MaxTimestamp(recipient.LastDeliveryCallbackReceivedAtUtc, envelope.ReceivedAtUtc);
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -189,6 +191,13 @@ public sealed class DeliveryCallbackRepository(PenelopeSmsDbContext dbContext)
         }
 
         return GetStatusProgressRank(incomingStatus) < GetStatusProgressRank(currentStatus);
+    }
+
+    private static bool IsForwardProgress(
+        CampaignRecipientStatus currentStatus,
+        CampaignRecipientStatus incomingStatus)
+    {
+        return GetStatusProgressRank(incomingStatus) > GetStatusProgressRank(currentStatus);
     }
 
     private static int GetStatusProgressRank(CampaignRecipientStatus status)
