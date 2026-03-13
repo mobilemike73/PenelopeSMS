@@ -10,10 +10,12 @@ namespace PenelopeSMS.Infrastructure.Twilio;
 public sealed class TwilioMessageSender : ITwilioMessageSender
 {
     private const string MissingCredentialsErrorCode = "twilio_messaging_credentials_missing";
+    private const string InvalidStatusCallbackUrlErrorCode = "twilio_status_callback_url_invalid";
     private readonly string accountSid;
     private readonly string authToken;
     private readonly string messagingServiceSid;
-    private readonly Func<string, string, CancellationToken, Task<MessageResource>> createMessageAsync;
+    private readonly string statusCallbackUrl;
+    private readonly Func<CreateMessageOptions, CancellationToken, Task<MessageResource>> createMessageAsync;
 
     public TwilioMessageSender(IConfiguration configuration)
     {
@@ -22,16 +24,20 @@ public sealed class TwilioMessageSender : ITwilioMessageSender
         accountSid = configuration["Twilio:AccountSid"] ?? string.Empty;
         authToken = configuration["Twilio:AuthToken"] ?? string.Empty;
         messagingServiceSid = configuration["Twilio:MessagingServiceSid"] ?? string.Empty;
+        statusCallbackUrl = configuration["Twilio:StatusCallbackUrl"] ?? string.Empty;
         createMessageAsync = CreateMessageAsync;
     }
 
-    internal TwilioMessageSender(Func<string, string, CancellationToken, Task<MessageResource>> createMessageAsync)
+    internal TwilioMessageSender(
+        Func<CreateMessageOptions, CancellationToken, Task<MessageResource>> createMessageAsync,
+        string statusCallbackUrl = "")
     {
         ArgumentNullException.ThrowIfNull(createMessageAsync);
 
         accountSid = string.Empty;
         authToken = string.Empty;
         messagingServiceSid = string.Empty;
+        this.statusCallbackUrl = statusCallbackUrl;
         this.createMessageAsync = createMessageAsync;
     }
 
@@ -53,7 +59,12 @@ public sealed class TwilioMessageSender : ITwilioMessageSender
 
         try
         {
-            var resource = await createMessageAsync(toPhoneNumber, messageBody, cancellationToken);
+            if (!TryBuildMessageOptions(toPhoneNumber, messageBody, out var options, out var invalidConfigurationResult))
+            {
+                return invalidConfigurationResult;
+            }
+
+            var resource = await createMessageAsync(options, cancellationToken);
             return TwilioSendResult.Success(
                 resource.Sid,
                 NormalizeLower(resource.Status?.ToString()));
@@ -77,20 +88,44 @@ public sealed class TwilioMessageSender : ITwilioMessageSender
     }
 
     private Task<MessageResource> CreateMessageAsync(
-        string toPhoneNumber,
-        string messageBody,
+        CreateMessageOptions options,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var client = new TwilioRestClient(accountSid, authToken, accountSid: accountSid);
-        var options = new CreateMessageOptions(new PhoneNumber(toPhoneNumber))
+        return MessageResource.CreateAsync(options, client: client);
+    }
+
+    private bool TryBuildMessageOptions(
+        string toPhoneNumber,
+        string messageBody,
+        out CreateMessageOptions options,
+        out TwilioSendResult invalidConfigurationResult)
+    {
+        options = new CreateMessageOptions(new PhoneNumber(toPhoneNumber))
         {
             MessagingServiceSid = messagingServiceSid,
             Body = messageBody
         };
 
-        return MessageResource.CreateAsync(options, client: client);
+        invalidConfigurationResult = default!;
+
+        if (string.IsNullOrWhiteSpace(statusCallbackUrl))
+        {
+            return true;
+        }
+
+        if (!Uri.TryCreate(statusCallbackUrl, UriKind.Absolute, out var statusCallbackUri))
+        {
+            invalidConfigurationResult = TwilioSendResult.Failure(
+                InvalidStatusCallbackUrlErrorCode,
+                "Twilio StatusCallbackUrl must be an absolute URI.");
+            return false;
+        }
+
+        options.StatusCallback = statusCallbackUri;
+        return true;
     }
 
     private static TwilioSendResult MapFailure(Exception exception)

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PenelopeSMS.App.Menu;
 using PenelopeSMS.App.Options;
+using PenelopeSMS.App.Services;
 using PenelopeSMS.App.Templates;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.Infrastructure;
@@ -13,9 +14,18 @@ public static class Program
     public static async Task<int> Main(string[] args)
     {
         using var host = BuildHost(args);
-        using var scope = host.Services.CreateScope();
-        await scope.ServiceProvider.GetRequiredService<MainMenu>().RunAsync();
-        return 0;
+        await host.StartAsync();
+
+        try
+        {
+            using var scope = host.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<MainMenu>().RunAsync();
+            return 0;
+        }
+        finally
+        {
+            await host.StopAsync();
+        }
     }
 
     public static IHost BuildHost(
@@ -53,6 +63,7 @@ public static class Program
         builder.Services.AddScoped<ICampaignCreationWorkflow, CampaignCreationWorkflow>();
         builder.Services.AddScoped<ICampaignSendWorkflow, CampaignSendWorkflow>();
         builder.Services.AddScoped<IDeliveryCallbackProcessingWorkflow, DeliveryCallbackProcessingWorkflow>();
+        builder.Services.AddHostedService<DeliveryCallbackWorker>();
         builder.Services.AddScoped<IEnrichmentWorkflow, EnrichmentWorkflow>();
         builder.Services.AddScoped<IEnrichmentRetryWorkflow, EnrichmentRetryWorkflow>();
         builder.Services.AddScoped<IImportWorkflow, ImportWorkflow>();

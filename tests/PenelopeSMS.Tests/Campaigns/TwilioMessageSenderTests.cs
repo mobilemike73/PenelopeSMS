@@ -16,12 +16,13 @@ public sealed class TwilioMessageSenderTests
             }
             """;
 
-        var sender = new TwilioMessageSender((toPhoneNumber, messageBody, _) =>
+        var sender = new TwilioMessageSender((options, _) =>
         {
-            Assert.Equal("+16502530000", toPhoneNumber);
-            Assert.Equal("Hello from PenelopeSMS", messageBody);
+            Assert.Equal("+16502530000", options.To.ToString());
+            Assert.Equal("Hello from PenelopeSMS", options.Body);
+            Assert.Equal("https://callbacks.example.com/twilio/status-callback", options.StatusCallback?.ToString());
             return Task.FromResult(MessageResource.FromJson(payload));
-        });
+        }, "https://callbacks.example.com/twilio/status-callback");
 
         var result = await sender.SendAsync("+16502530000", "Hello from PenelopeSMS");
 
@@ -35,7 +36,7 @@ public sealed class TwilioMessageSenderTests
     [Fact]
     public async Task SendAsyncMapsApiFailuresIntoProviderErrorFields()
     {
-        var sender = new TwilioMessageSender((_, _, _) => Task.FromException<MessageResource>(
+        var sender = new TwilioMessageSender((_, _) => Task.FromException<MessageResource>(
             new ApiException(
                 code: 21610,
                 status: 400,
@@ -51,5 +52,19 @@ public sealed class TwilioMessageSenderTests
         Assert.Equal("Message cannot be sent to the destination.", result.ErrorMessage);
         Assert.Null(result.MessageSid);
         Assert.Null(result.InitialStatus);
+    }
+
+    [Fact]
+    public async Task SendAsyncFailsWhenStatusCallbackUrlIsInvalid()
+    {
+        var sender = new TwilioMessageSender(
+            (_, _) => Task.FromResult(MessageResource.FromJson("""{"sid":"SM123","status":"queued"}""")),
+            "not-a-uri");
+
+        var result = await sender.SendAsync("+16502530000", "Hello from PenelopeSMS");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("twilio_status_callback_url_invalid", result.ErrorCode);
+        Assert.Equal("Twilio StatusCallbackUrl must be an absolute URI.", result.ErrorMessage);
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using PenelopeSMS.App;
 using PenelopeSMS.App.Menu;
 using PenelopeSMS.App.Options;
+using PenelopeSMS.App.Services;
 
 namespace PenelopeSMS.Tests.Host;
 
@@ -67,6 +68,16 @@ public sealed class HostBootstrapTests
         Assert.Equal("secret", aws.SecretAccessKey);
         Assert.Equal("https://sqs.example.com/queue", aws.CallbackQueueUrl);
         Assert.Equal("https://sqs.example.com/queue-dlq", aws.CallbackDeadLetterQueueUrl);
+    }
+
+    [Fact]
+    public void BuildHostRegistersDeliveryCallbackWorkerAsHostedService()
+    {
+        using var host = CreateHost();
+
+        var hostedServices = host.Services.GetServices<IHostedService>();
+
+        Assert.Contains(hostedServices, service => service is DeliveryCallbackWorker);
     }
 
     private static IHost CreateHost(IDictionary<string, string?>? overrides = null)

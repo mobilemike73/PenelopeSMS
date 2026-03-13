@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using PenelopeSMS.App.Options;
@@ -9,27 +10,31 @@ namespace PenelopeSMS.App.Services;
 public sealed class DeliveryCallbackWorker : BackgroundService
 {
     private readonly IAwsSqsClient awsSqsClient;
-    private readonly IDeliveryCallbackProcessingWorkflow deliveryCallbackProcessingWorkflow;
     private readonly IOptions<AwsOptions> awsOptions;
+    private readonly Func<SqsQueueMessage, CancellationToken, Task<DeliveryCallbackProcessingResult>> processMessageAsync;
     private readonly TextWriter output;
 
     public DeliveryCallbackWorker(
         IAwsSqsClient awsSqsClient,
-        IDeliveryCallbackProcessingWorkflow deliveryCallbackProcessingWorkflow,
+        IServiceScopeFactory serviceScopeFactory,
         IOptions<AwsOptions> awsOptions)
-        : this(awsSqsClient, deliveryCallbackProcessingWorkflow, awsOptions, Console.Out)
+        : this(
+            awsSqsClient,
+            awsOptions,
+            (message, cancellationToken) => ProcessWithScopedWorkflowAsync(serviceScopeFactory, message, cancellationToken),
+            Console.Out)
     {
     }
 
     internal DeliveryCallbackWorker(
         IAwsSqsClient awsSqsClient,
-        IDeliveryCallbackProcessingWorkflow deliveryCallbackProcessingWorkflow,
         IOptions<AwsOptions> awsOptions,
+        Func<SqsQueueMessage, CancellationToken, Task<DeliveryCallbackProcessingResult>> processMessageAsync,
         TextWriter output)
     {
         this.awsSqsClient = awsSqsClient;
-        this.deliveryCallbackProcessingWorkflow = deliveryCallbackProcessingWorkflow;
         this.awsOptions = awsOptions;
+        this.processMessageAsync = processMessageAsync;
         this.output = output;
     }
 
@@ -68,7 +73,7 @@ public sealed class DeliveryCallbackWorker : BackgroundService
 
         try
         {
-            var result = await deliveryCallbackProcessingWorkflow.ProcessAsync(message, stoppingToken);
+            var result = await processMessageAsync(message, stoppingToken);
             output.WriteLine(result.ConsoleMessage);
 
             if (!result.ShouldDeleteMessage)
@@ -84,5 +89,15 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         {
             output.WriteLine($"Warning: delivery callback processing failed for queue message {message.MessageId}: {exception.Message}");
         }
+    }
+
+    private static async Task<DeliveryCallbackProcessingResult> ProcessWithScopedWorkflowAsync(
+        IServiceScopeFactory serviceScopeFactory,
+        SqsQueueMessage message,
+        CancellationToken cancellationToken)
+    {
+        await using var scope = serviceScopeFactory.CreateAsyncScope();
+        var workflow = scope.ServiceProvider.GetRequiredService<IDeliveryCallbackProcessingWorkflow>();
+        return await workflow.ProcessAsync(message, cancellationToken);
     }
 }
