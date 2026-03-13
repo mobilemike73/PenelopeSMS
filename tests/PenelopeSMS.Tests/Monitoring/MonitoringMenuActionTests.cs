@@ -69,6 +69,29 @@ public sealed class MonitoringMenuActionTests
         Assert.Contains("Provider timeout", output.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ExecuteAsyncExportsHtmlReport()
+    {
+        var workflow = new FakeMonitoringWorkflow(
+            hiddenDashboard: CreateDashboard(includeCompletedCampaigns: false),
+            visibleDashboard: CreateDashboard(includeCompletedCampaigns: true),
+            detail: CreateDetail(),
+            exportPath: @"C:\reports\penelope-monitoring-report.html");
+        var output = new StringWriter();
+        var action = new MonitoringMenuAction(
+            workflow,
+            new MonitoringScreenRenderer(),
+            new StringReader("e\n\n0\n"),
+            output,
+            new FixedTimeProvider(new DateTimeOffset(2026, 03, 13, 12, 30, 00, TimeSpan.Zero)),
+            TimeSpan.FromMinutes(1));
+
+        await action.ExecuteAsync();
+
+        Assert.Equal(1, workflow.ExportRequests);
+        Assert.Contains("HTML report written to C:\\reports\\penelope-monitoring-report.html", output.ToString(), StringComparison.Ordinal);
+    }
+
     private static MonitoringDashboardSnapshot CreateDashboard(bool includeCompletedCampaigns)
     {
         var campaigns = new List<CampaignMonitoringSummaryRecord>
@@ -182,11 +205,14 @@ public sealed class MonitoringMenuActionTests
     private sealed class FakeMonitoringWorkflow(
         MonitoringDashboardSnapshot hiddenDashboard,
         MonitoringDashboardSnapshot visibleDashboard,
-        CampaignMonitoringDetailRecord detail) : IMonitoringWorkflow
+        CampaignMonitoringDetailRecord detail,
+        string exportPath = "/tmp/report.html") : IMonitoringWorkflow
     {
         public List<bool> DashboardRequests { get; } = [];
 
         public List<int> DetailRequests { get; } = [];
+
+        public int ExportRequests { get; private set; }
 
         public Task<MonitoringDashboardSnapshot> GetDashboardAsync(
             bool includeCompletedCampaigns = false,
@@ -202,6 +228,14 @@ public sealed class MonitoringMenuActionTests
         {
             DetailRequests.Add(campaignId);
             return Task.FromResult(detail);
+        }
+
+        public Task<string> ExportHtmlReportAsync(
+            string? outputPath = null,
+            CancellationToken cancellationToken = default)
+        {
+            ExportRequests++;
+            return Task.FromResult(outputPath ?? exportPath);
         }
     }
 

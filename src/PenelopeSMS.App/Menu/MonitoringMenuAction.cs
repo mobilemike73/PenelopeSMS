@@ -81,6 +81,17 @@ public sealed class MonitoringMenuAction
                 continue;
             }
 
+            if (string.Equals(command, "e", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(command, "export", StringComparison.OrdinalIgnoreCase))
+            {
+                var reportPath = await monitoringWorkflow.ExportHtmlReportAsync(
+                    cancellationToken: cancellationToken);
+                output.WriteLine($"HTML report written to {reportPath}");
+                output.WriteLine("Press Enter to continue.");
+                await input.ReadLineAsync(cancellationToken);
+                continue;
+            }
+
             if (int.TryParse(command, out var campaignId) && campaignId > 0)
             {
                 await ShowCampaignDetailAsync(campaignId, cancellationToken);

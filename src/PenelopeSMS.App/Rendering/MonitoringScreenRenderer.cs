@@ -47,7 +47,7 @@ public sealed class MonitoringScreenRenderer
         builder.AppendLine(includeCompletedCampaigns
             ? "Completed campaigns: shown"
             : "Completed campaigns: hidden (enter 'c' to reveal)");
-        builder.AppendLine("Commands: [campaign id] drill-in | c toggle completed | r refresh | 0 back");
+        builder.AppendLine("Commands: [campaign id] drill-in | e export HTML report | c toggle completed | r refresh | 0 back");
         builder.AppendLine();
 
         AppendActiveJobs(builder, snapshot.ActiveJobsOrEmpty);

@@ -11,6 +11,10 @@ public interface IMonitoringWorkflow
     Task<CampaignMonitoringDetailRecord> GetCampaignDetailAsync(
         int campaignId,
         CancellationToken cancellationToken = default);
+
+    Task<string> ExportHtmlReportAsync(
+        string? outputPath = null,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record MonitoringDashboardSnapshot(

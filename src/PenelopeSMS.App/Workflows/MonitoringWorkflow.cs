@@ -1,4 +1,6 @@
+using System.Text;
 using PenelopeSMS.App.Monitoring;
+using PenelopeSMS.App.Rendering;
 using PenelopeSMS.Infrastructure.SqlServer.Queries;
 
 namespace PenelopeSMS.App.Workflows;
@@ -6,8 +8,13 @@ namespace PenelopeSMS.App.Workflows;
 public sealed class MonitoringWorkflow(
     CampaignMonitoringQuery campaignMonitoringQuery,
     OperationsIssueQuery operationsIssueQuery,
-    IOperationsMonitor operationsMonitor) : IMonitoringWorkflow
+    MonitoringHtmlReportQuery monitoringHtmlReportQuery,
+    MonitoringHtmlReportRenderer monitoringHtmlReportRenderer,
+    IOperationsMonitor operationsMonitor,
+    TimeProvider? timeProvider = null) : IMonitoringWorkflow
 {
+    private readonly TimeProvider reportTimeProvider = timeProvider ?? TimeProvider.System;
+
     public async Task<MonitoringDashboardSnapshot> GetDashboardAsync(
         bool includeCompletedCampaigns = false,
         CancellationToken cancellationToken = default)
@@ -50,6 +57,37 @@ public sealed class MonitoringWorkflow(
 
         return campaign
             ?? throw new InvalidOperationException($"Campaign {campaignId} was not found.");
+    }
+
+    public async Task<string> ExportHtmlReportAsync(
+        string? outputPath = null,
+        CancellationToken cancellationToken = default)
+    {
+        var generatedAtUtc = reportTimeProvider.GetUtcNow().UtcDateTime;
+        var dashboard = await GetDashboardAsync(
+            includeCompletedCampaigns: true,
+            cancellationToken);
+        var reportData = await monitoringHtmlReportQuery.GetReportDataAsync(cancellationToken);
+        var html = monitoringHtmlReportRenderer.Render(new MonitoringHtmlReportDocument(
+            GeneratedAtUtc: generatedAtUtc,
+            Dashboard: dashboard,
+            ReportData: reportData));
+
+        var resolvedOutputPath = ResolveOutputPath(outputPath, generatedAtUtc);
+        var directoryPath = Path.GetDirectoryName(resolvedOutputPath);
+
+        if (!string.IsNullOrWhiteSpace(directoryPath))
+        {
+            Directory.CreateDirectory(directoryPath);
+        }
+
+        await File.WriteAllTextAsync(
+            resolvedOutputPath,
+            html,
+            Encoding.UTF8,
+            cancellationToken);
+
+        return resolvedOutputPath;
     }
 
     private static List<MonitoringCompletedJobRecord> MergeCompletedJobs(
@@ -119,5 +157,16 @@ public sealed class MonitoringWorkflow(
             OperationType.DeliveryProcessing => "delivery_processing",
             _ => operationType.ToString().ToLowerInvariant()
         };
+    }
+
+    private static string ResolveOutputPath(string? outputPath, DateTime generatedAtUtc)
+    {
+        if (!string.IsNullOrWhiteSpace(outputPath))
+        {
+            return Path.GetFullPath(outputPath);
+        }
+
+        var fileName = $"penelope-monitoring-report-{generatedAtUtc:yyyyMMdd-HHmmss}.html";
+        return Path.Combine(Directory.GetCurrentDirectory(), "reports", fileName);
     }
 }

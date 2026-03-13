@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<CampaignRecipientSelectionQuery>();
         services.AddScoped<CampaignSendBatchQuery>();
         services.AddScoped<CampaignMonitoringQuery>();
+        services.AddScoped<MonitoringHtmlReportQuery>();
         services.AddScoped<OperationsIssueQuery>();
         services.AddScoped<PendingDeliveryCallbackBatchQuery>();
         services.AddScoped<CampaignRepository>();

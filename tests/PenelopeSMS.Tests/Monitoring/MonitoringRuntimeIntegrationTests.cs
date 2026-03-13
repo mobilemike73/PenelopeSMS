@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PenelopeSMS.App.Monitoring;
+using PenelopeSMS.App.Rendering;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.Domain.Entities;
 using PenelopeSMS.Domain.Enums;
@@ -46,6 +47,8 @@ public sealed class MonitoringRuntimeIntegrationTests
         var workflow = new MonitoringWorkflow(
             new CampaignMonitoringQuery(database.DbContext),
             new OperationsIssueQuery(database.DbContext),
+            new MonitoringHtmlReportQuery(database.DbContext),
+            new MonitoringHtmlReportRenderer(),
             monitor);
 
         var dashboard = await workflow.GetDashboardAsync(includeCompletedCampaigns: true);
