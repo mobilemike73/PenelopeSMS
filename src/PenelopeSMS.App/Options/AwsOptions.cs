@@ -11,4 +11,6 @@ public sealed class AwsOptions
     public string SecretAccessKey { get; init; } = string.Empty;
 
     public string CallbackQueueUrl { get; init; } = string.Empty;
+
+    public string CallbackDeadLetterQueueUrl { get; init; } = string.Empty;
 }

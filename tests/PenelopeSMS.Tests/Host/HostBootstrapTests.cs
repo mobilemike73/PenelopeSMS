@@ -34,10 +34,12 @@ public sealed class HostBootstrapTests
             [ConfigurationPath.Combine(TwilioOptions.SectionName, nameof(TwilioOptions.AccountSid))] = "AC123",
             [ConfigurationPath.Combine(TwilioOptions.SectionName, nameof(TwilioOptions.AuthToken))] = "secret",
             [ConfigurationPath.Combine(TwilioOptions.SectionName, nameof(TwilioOptions.MessagingServiceSid))] = "MG123",
+            [ConfigurationPath.Combine(TwilioOptions.SectionName, nameof(TwilioOptions.StatusCallbackUrl))] = "https://callbacks.example.com/twilio/status-callback",
             [ConfigurationPath.Combine(AwsOptions.SectionName, nameof(AwsOptions.Region))] = "us-west-2",
             [ConfigurationPath.Combine(AwsOptions.SectionName, nameof(AwsOptions.AccessKeyId))] = "key",
             [ConfigurationPath.Combine(AwsOptions.SectionName, nameof(AwsOptions.SecretAccessKey))] = "secret",
-            [ConfigurationPath.Combine(AwsOptions.SectionName, nameof(AwsOptions.CallbackQueueUrl))] = "https://sqs.example.com/queue"
+            [ConfigurationPath.Combine(AwsOptions.SectionName, nameof(AwsOptions.CallbackQueueUrl))] = "https://sqs.example.com/queue",
+            [ConfigurationPath.Combine(AwsOptions.SectionName, nameof(AwsOptions.CallbackDeadLetterQueueUrl))] = "https://sqs.example.com/queue-dlq"
         };
 
         using var host = CreateHost(configuration);
@@ -58,11 +60,13 @@ public sealed class HostBootstrapTests
         Assert.Equal("AC123", twilio.AccountSid);
         Assert.Equal("secret", twilio.AuthToken);
         Assert.Equal("MG123", twilio.MessagingServiceSid);
+        Assert.Equal("https://callbacks.example.com/twilio/status-callback", twilio.StatusCallbackUrl);
 
         Assert.Equal("us-west-2", aws.Region);
         Assert.Equal("key", aws.AccessKeyId);
         Assert.Equal("secret", aws.SecretAccessKey);
         Assert.Equal("https://sqs.example.com/queue", aws.CallbackQueueUrl);
+        Assert.Equal("https://sqs.example.com/queue-dlq", aws.CallbackDeadLetterQueueUrl);
     }
 
     private static IHost CreateHost(IDictionary<string, string?>? overrides = null)

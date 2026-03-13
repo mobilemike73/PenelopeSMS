@@ -9,4 +9,6 @@ public sealed class TwilioOptions
     public string AuthToken { get; init; } = string.Empty;
 
     public string MessagingServiceSid { get; init; } = string.Empty;
+
+    public string StatusCallbackUrl { get; init; } = string.Empty;
 }
