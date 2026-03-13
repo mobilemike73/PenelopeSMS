@@ -122,14 +122,14 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
     private static int TryGetRequiredOrdinal(
         DbDataReader reader,
         string columnName,
-        IReadOnlyList<string> availableColumns)
+        string[] availableColumns)
     {
         return TryGetOrdinal(reader, columnName)
             ?? throw new InvalidOperationException(
                 $"Oracle import query must return {columnName}. Available columns: {string.Join(", ", availableColumns)}");
     }
 
-    private static IReadOnlyList<string> GetColumnNames(DbDataReader reader)
+    private static string[] GetColumnNames(DbDataReader reader)
     {
         var columnNames = new string[reader.FieldCount];
 
