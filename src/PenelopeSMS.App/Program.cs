@@ -52,6 +52,7 @@ public static class Program
         builder.Services.AddScoped<IPlainTextTemplateLoader, FilePlainTextTemplateLoader>();
         builder.Services.AddScoped<ICampaignCreationWorkflow, CampaignCreationWorkflow>();
         builder.Services.AddScoped<ICampaignSendWorkflow, CampaignSendWorkflow>();
+        builder.Services.AddScoped<IDeliveryCallbackProcessingWorkflow, DeliveryCallbackProcessingWorkflow>();
         builder.Services.AddScoped<IEnrichmentWorkflow, EnrichmentWorkflow>();
         builder.Services.AddScoped<IEnrichmentRetryWorkflow, EnrichmentRetryWorkflow>();
         builder.Services.AddScoped<IImportWorkflow, ImportWorkflow>();
