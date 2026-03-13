@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Configuration;
 using Oracle.ManagedDataAccess.Client;
@@ -39,14 +40,48 @@ public sealed class OraclePhoneImportReader(IConfiguration configuration) : IOra
 
         await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken);
         var custSidOrdinal = reader.GetOrdinal("CUST_SID");
-        var phoneNumberOrdinal = reader.GetOrdinal("PHONE_NUMBER");
+        var phone1Ordinal = TryGetOrdinal(reader, "PHONE1");
+        var phone2Ordinal = TryGetOrdinal(reader, "PHONE2");
+
+        if (phone1Ordinal is null && phone2Ordinal is null)
+        {
+            throw new InvalidOperationException(
+                "Oracle import query must return PHONE1 and/or PHONE2 columns.");
+        }
 
         while (await reader.ReadAsync(cancellationToken))
         {
             var custSid = reader.IsDBNull(custSidOrdinal) ? string.Empty : reader.GetString(custSidOrdinal);
-            var phoneNumber = reader.IsDBNull(phoneNumberOrdinal) ? string.Empty : reader.GetString(phoneNumberOrdinal);
+            var phone1 = phone1Ordinal is null ? string.Empty : GetTrimmedString(reader, phone1Ordinal.Value);
+            var phone2 = phone2Ordinal is null ? string.Empty : GetTrimmedString(reader, phone2Ordinal.Value);
 
-            yield return new OracleCustomerPhoneRow(custSid, phoneNumber);
+            if (!string.IsNullOrWhiteSpace(phone1))
+            {
+                yield return new OracleCustomerPhoneRow(custSid, phone1);
+            }
+
+            if (!string.IsNullOrWhiteSpace(phone2))
+            {
+                yield return new OracleCustomerPhoneRow(custSid, phone2);
+            }
         }
+    }
+
+    private static int? TryGetOrdinal(IDataRecord record, string columnName)
+    {
+        for (var index = 0; index < record.FieldCount; index++)
+        {
+            if (string.Equals(record.GetName(index), columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                return index;
+            }
+        }
+
+        return null;
+    }
+
+    private static string GetTrimmedString(DbDataReader reader, int ordinal)
+    {
+        return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal).Trim();
     }
 }

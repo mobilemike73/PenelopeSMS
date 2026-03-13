@@ -10,7 +10,7 @@ public sealed class PenelopeSmsDbContextFactory : IDesignTimeDbContextFactory<Pe
         var optionsBuilder = new DbContextOptionsBuilder<PenelopeSmsDbContext>();
 
         optionsBuilder.UseSqlServer(
-            @"Server=.\SQLEXPRESS;Database=PenelopeSMS;Trusted_Connection=True;Encrypt=False;TrustServerCertificate=True");
+            @"Server=tcp:127.0.0.1,1433;Database=PenelopeSMS;User Id=sqlpublish;Password=Rivers1957&&;Encrypt=False;TrustServerCertificate=True");
 
         return new PenelopeSmsDbContext(optionsBuilder.Options);
     }

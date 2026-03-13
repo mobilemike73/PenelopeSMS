@@ -25,7 +25,7 @@ public static class DependencyInjection
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             connectionString =
-                @"Server=.\SQLEXPRESS;Database=PenelopeSMS;Trusted_Connection=True;Encrypt=False;TrustServerCertificate=True";
+                @"Server=tcp:127.0.0.1,1433;Database=PenelopeSMS;User Id=sqlpublish;Password=Rivers1957&&;Encrypt=False;TrustServerCertificate=True";
         }
 
         services.AddDbContext<PenelopeSmsDbContext>(options =>
