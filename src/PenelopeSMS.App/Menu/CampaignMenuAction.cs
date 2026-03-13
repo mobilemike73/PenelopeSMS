@@ -1,11 +1,14 @@
+using Microsoft.Extensions.Options;
 using PenelopeSMS.App.Workflows;
+using PenelopeSMS.App.Options;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
 
 namespace PenelopeSMS.App.Menu;
 
 public sealed class CampaignMenuAction(
     ICampaignCreationWorkflow campaignCreationWorkflow,
-    ICampaignSendWorkflow campaignSendWorkflow)
+    ICampaignSendWorkflow campaignSendWorkflow,
+    IOptions<TwilioOptions> twilioOptions)
 {
     private readonly TextReader input = Console.In;
     private readonly TextWriter output = Console.Out;
@@ -117,6 +120,15 @@ public sealed class CampaignMenuAction(
 
             output.WriteLine(
                 $"Campaign batch sent for {result.CampaignName}. Attempted: {result.AttemptedRecipients}, Accepted: {result.AcceptedRecipients}, Failed: {result.FailedRecipients}, Remaining pending: {result.RemainingPendingRecipients}");
+
+            if (string.IsNullOrWhiteSpace(twilioOptions.Value.StatusCallbackUrl))
+            {
+                output.WriteLine("Warning: Twilio:StatusCallbackUrl is blank. New sends will not feed the delivery callback pipeline.");
+            }
+            else
+            {
+                output.WriteLine($"Delivery callbacks enabled via {twilioOptions.Value.StatusCallbackUrl}. Background processing continues while the app is open.");
+            }
         }
         catch (InvalidOperationException exception)
         {

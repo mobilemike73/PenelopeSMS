@@ -15,14 +15,14 @@ public sealed class DeliveryCallbackWorkerTests
             new SqsQueueMessage("message-1", "{}", "receipt-1"));
         var worker = new DeliveryCallbackWorker(
             sqsClient,
-            new FakeDeliveryCallbackProcessingWorkflow(new DeliveryCallbackProcessingResult(
-                ShouldDeleteMessage: true,
-                Outcome: "applied",
-                ConsoleMessage: "applied")),
             Options.Create(new AwsOptions
             {
                 CallbackQueueUrl = "https://sqs.example.com/queue"
             }),
+            (_, _) => Task.FromResult(new DeliveryCallbackProcessingResult(
+                ShouldDeleteMessage: true,
+                Outcome: "applied",
+                ConsoleMessage: "applied")),
             TextWriter.Null);
 
         await worker.ProcessSingleIterationAsync();
@@ -37,14 +37,14 @@ public sealed class DeliveryCallbackWorkerTests
             new SqsQueueMessage("message-1", "{}", "receipt-1"));
         var worker = new DeliveryCallbackWorker(
             sqsClient,
-            new FakeDeliveryCallbackProcessingWorkflow(new DeliveryCallbackProcessingResult(
-                ShouldDeleteMessage: false,
-                Outcome: "failed",
-                ConsoleMessage: "failed")),
             Options.Create(new AwsOptions
             {
                 CallbackQueueUrl = "https://sqs.example.com/queue"
             }),
+            (_, _) => Task.FromResult(new DeliveryCallbackProcessingResult(
+                ShouldDeleteMessage: false,
+                Outcome: "failed",
+                ConsoleMessage: "failed")),
             TextWriter.Null);
 
         await worker.ProcessSingleIterationAsync();
@@ -59,11 +59,11 @@ public sealed class DeliveryCallbackWorkerTests
             new SqsQueueMessage("message-1", "{}", "receipt-1"));
         var worker = new DeliveryCallbackWorker(
             sqsClient,
-            new ThrowingDeliveryCallbackProcessingWorkflow(),
             Options.Create(new AwsOptions
             {
                 CallbackQueueUrl = "https://sqs.example.com/queue"
             }),
+            (_, _) => throw new InvalidOperationException("boom"),
             TextWriter.Null);
 
         await worker.ProcessSingleIterationAsync();
@@ -89,24 +89,4 @@ public sealed class DeliveryCallbackWorkerTests
         }
     }
 
-    private sealed class FakeDeliveryCallbackProcessingWorkflow(
-        DeliveryCallbackProcessingResult result) : IDeliveryCallbackProcessingWorkflow
-    {
-        public Task<DeliveryCallbackProcessingResult> ProcessAsync(
-            SqsQueueMessage message,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(result);
-        }
-    }
-
-    private sealed class ThrowingDeliveryCallbackProcessingWorkflow : IDeliveryCallbackProcessingWorkflow
-    {
-        public Task<DeliveryCallbackProcessingResult> ProcessAsync(
-            SqsQueueMessage message,
-            CancellationToken cancellationToken = default)
-        {
-            throw new InvalidOperationException("boom");
-        }
-    }
 }
