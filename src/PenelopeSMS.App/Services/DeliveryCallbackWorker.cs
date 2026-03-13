@@ -1,3 +1,4 @@
+using PenelopeSMS.App.Monitoring;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -12,16 +13,21 @@ public sealed class DeliveryCallbackWorker : BackgroundService
     private readonly IAwsSqsClient awsSqsClient;
     private readonly IOptions<AwsOptions> awsOptions;
     private readonly Func<SqsQueueMessage, CancellationToken, Task<DeliveryCallbackProcessingResult>> processMessageAsync;
+    private readonly IOperationsMonitor operationsMonitor;
     private readonly TextWriter output;
+    private string? activeJobId;
+    private bool warnedMissingQueue;
 
     public DeliveryCallbackWorker(
         IAwsSqsClient awsSqsClient,
         IServiceScopeFactory serviceScopeFactory,
-        IOptions<AwsOptions> awsOptions)
+        IOptions<AwsOptions> awsOptions,
+        IOperationsMonitor? runtimeOperationsMonitor = null)
         : this(
             awsSqsClient,
             awsOptions,
             (message, cancellationToken) => ProcessWithScopedWorkflowAsync(serviceScopeFactory, message, cancellationToken),
+            runtimeOperationsMonitor ?? NullOperationsMonitor.Instance,
             Console.Out)
     {
     }
@@ -30,11 +36,13 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         IAwsSqsClient awsSqsClient,
         IOptions<AwsOptions> awsOptions,
         Func<SqsQueueMessage, CancellationToken, Task<DeliveryCallbackProcessingResult>> processMessageAsync,
+        IOperationsMonitor operationsMonitor,
         TextWriter output)
     {
         this.awsSqsClient = awsSqsClient;
         this.awsOptions = awsOptions;
         this.processMessageAsync = processMessageAsync;
+        this.operationsMonitor = operationsMonitor;
         this.output = output;
     }
 
@@ -45,8 +53,11 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         if (string.IsNullOrWhiteSpace(queueUrl))
         {
             output.WriteLine("Delivery callback worker disabled: Aws:CallbackQueueUrl is not configured.");
+            WarnForMissingQueue();
             return;
         }
+
+        EnsureJobStarted();
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -61,13 +72,16 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         if (string.IsNullOrWhiteSpace(queueUrl))
         {
             output.WriteLine("Delivery callback worker disabled: Aws:CallbackQueueUrl is not configured.");
+            WarnForMissingQueue();
             return;
         }
 
+        EnsureJobStarted();
         var message = await awsSqsClient.ReceiveMessageAsync(queueUrl, stoppingToken);
 
         if (message is null)
         {
+            operationsMonitor.UpdateJob(activeJobId!, "Waiting for queue messages");
             return;
         }
 
@@ -75,20 +89,57 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         {
             var result = await processMessageAsync(message, stoppingToken);
             output.WriteLine(result.ConsoleMessage);
+            operationsMonitor.RecordLiveDeliveryLine(result.ConsoleMessage, DateTime.UtcNow);
+            operationsMonitor.UpdateJob(activeJobId!, $"Last outcome: {result.Outcome}");
+            operationsMonitor.ResolveWarnings(jobId: activeJobId);
 
             if (!result.ShouldDeleteMessage)
             {
-                output.WriteLine($"Leaving queue message {message.MessageId} for redelivery.");
+                var redeliveryMessage = $"Leaving queue message {message.MessageId} for redelivery.";
+                output.WriteLine(redeliveryMessage);
+                operationsMonitor.RecordLiveDeliveryLine(redeliveryMessage, DateTime.UtcNow);
                 return;
             }
 
             await awsSqsClient.DeleteMessageAsync(queueUrl, message.ReceiptHandle, stoppingToken);
-            output.WriteLine($"Deleted queue message {message.MessageId} after {result.Outcome}.");
+            var deletedMessage = $"Deleted queue message {message.MessageId} after {result.Outcome}.";
+            output.WriteLine(deletedMessage);
+            operationsMonitor.RecordLiveDeliveryLine(deletedMessage, DateTime.UtcNow);
         }
         catch (Exception exception)
         {
-            output.WriteLine($"Warning: delivery callback processing failed for queue message {message.MessageId}: {exception.Message}");
+            var warningMessage = $"Warning: delivery callback processing failed for queue message {message.MessageId}: {exception.Message}";
+            output.WriteLine(warningMessage);
+            operationsMonitor.Warn(OperationType.DeliveryProcessing, warningMessage, activeJobId, DateTime.UtcNow);
+            operationsMonitor.RecordLiveDeliveryLine(warningMessage, DateTime.UtcNow);
         }
+    }
+
+    private void EnsureJobStarted()
+    {
+        if (!string.IsNullOrWhiteSpace(activeJobId))
+        {
+            return;
+        }
+
+        activeJobId = operationsMonitor.StartJob(
+            OperationType.DeliveryProcessing,
+            "Delivery callback processing",
+            "Waiting for queue messages");
+        warnedMissingQueue = false;
+    }
+
+    private void WarnForMissingQueue()
+    {
+        if (warnedMissingQueue)
+        {
+            return;
+        }
+
+        operationsMonitor.Warn(
+            OperationType.DeliveryProcessing,
+            "Delivery callback worker disabled: Aws:CallbackQueueUrl is not configured.");
+        warnedMissingQueue = true;
     }
 
     private static async Task<DeliveryCallbackProcessingResult> ProcessWithScopedWorkflowAsync(

@@ -1,3 +1,4 @@
+using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.Infrastructure.SqlServer.Queries;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
 using PenelopeSMS.Infrastructure.Twilio;
@@ -7,8 +8,11 @@ namespace PenelopeSMS.App.Workflows;
 public sealed class CampaignSendWorkflow(
     CampaignSendBatchQuery campaignSendBatchQuery,
     CampaignSendRepository campaignSendRepository,
-    ITwilioMessageSender twilioMessageSender) : ICampaignSendWorkflow
+    ITwilioMessageSender twilioMessageSender,
+    IOperationsMonitor? runtimeOperationsMonitor = null) : ICampaignSendWorkflow
 {
+    private readonly IOperationsMonitor operationsMonitor = runtimeOperationsMonitor ?? NullOperationsMonitor.Instance;
+
     public async Task<IReadOnlyList<CampaignSendSummaryRecord>> ListCampaignsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -26,6 +30,10 @@ public sealed class CampaignSendWorkflow(
             campaignId,
             campaign.BatchSize,
             cancellationToken);
+        var jobId = operationsMonitor.StartJob(
+            OperationType.CampaignSend,
+            $"Campaign send: {campaign.CampaignName}",
+            $"Attempting {batch.Count} recipient(s)");
 
         var acceptedRecipients = 0;
         var failedRecipients = 0;
@@ -49,11 +57,22 @@ public sealed class CampaignSendWorkflow(
             else
             {
                 failedRecipients++;
+                operationsMonitor.Warn(
+                    OperationType.CampaignSend,
+                    $"Campaign send failed for {recipient.CanonicalPhoneNumber}: {sendResult.ErrorMessage ?? sendResult.ErrorCode ?? "Unknown provider error"}",
+                    jobId);
             }
+
+            operationsMonitor.UpdateJob(
+                jobId,
+                $"Processed {acceptedRecipients + failedRecipients}/{batch.Count}, Accepted {acceptedRecipients}, Failed {failedRecipients}");
         }
 
         var refreshedCampaigns = await campaignSendRepository.ListCampaignsAsync(cancellationToken);
         var refreshedCampaign = refreshedCampaigns.Single(summary => summary.CampaignId == campaignId);
+        operationsMonitor.CompleteJob(
+            jobId,
+            $"Campaign batch sent for {campaign.CampaignName}. Attempted: {batch.Count}, Accepted: {acceptedRecipients}, Failed: {failedRecipients}, Remaining pending: {refreshedCampaign.PendingRecipients}");
 
         return new CampaignSendWorkflowResult(
             CampaignId: campaign.CampaignId,

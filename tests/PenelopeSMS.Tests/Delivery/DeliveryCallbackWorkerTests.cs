@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.App.Options;
 using PenelopeSMS.App.Services;
 using PenelopeSMS.App.Workflows;
@@ -23,6 +24,7 @@ public sealed class DeliveryCallbackWorkerTests
                 ShouldDeleteMessage: true,
                 Outcome: "applied",
                 ConsoleMessage: "applied")),
+            new OperationsMonitor(),
             TextWriter.Null);
 
         await worker.ProcessSingleIterationAsync();
@@ -45,6 +47,7 @@ public sealed class DeliveryCallbackWorkerTests
                 ShouldDeleteMessage: false,
                 Outcome: "failed",
                 ConsoleMessage: "failed")),
+            new OperationsMonitor(),
             TextWriter.Null);
 
         await worker.ProcessSingleIterationAsync();
@@ -64,6 +67,7 @@ public sealed class DeliveryCallbackWorkerTests
                 CallbackQueueUrl = "https://sqs.example.com/queue"
             }),
             (_, _) => throw new InvalidOperationException("boom"),
+            new OperationsMonitor(),
             TextWriter.Null);
 
         await worker.ProcessSingleIterationAsync();

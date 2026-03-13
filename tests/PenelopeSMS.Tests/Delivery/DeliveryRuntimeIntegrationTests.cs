@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.App.Options;
 using PenelopeSMS.App.Services;
 using PenelopeSMS.App.Workflows;
@@ -37,6 +38,7 @@ public sealed class DeliveryRuntimeIntegrationTests
             signatureHeader: "sig");
 
         var output = new StringWriter();
+        var monitor = new OperationsMonitor();
         var sqsClient = new FakeAwsSqsClient(
             new SqsQueueMessage(
                 MessageId: "message-1",
@@ -50,6 +52,7 @@ public sealed class DeliveryRuntimeIntegrationTests
                 CallbackQueueUrl = "https://sqs.example.com/queue"
             }),
             workflow.ProcessAsync,
+            monitor,
             output);
 
         await worker.ProcessSingleIterationAsync();
