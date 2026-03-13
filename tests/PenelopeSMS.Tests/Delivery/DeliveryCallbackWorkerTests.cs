@@ -122,6 +122,52 @@ public sealed class DeliveryCallbackWorkerTests
         Assert.Null(color);
     }
 
+    [Fact]
+    public void BuildDisplayedStatusMessageReturnsMessageForDelivered()
+    {
+        var result = new DeliveryCallbackProcessingResult(
+            ShouldDeleteMessage: true,
+            Outcome: "applied",
+            ConsoleMessage: "delivered line",
+            MessageStatus: "delivered");
+
+        var message = DeliveryCallbackWorker.BuildDisplayedStatusMessage(result);
+
+        Assert.Equal("delivered line", message);
+    }
+
+    [Fact]
+    public void BuildDisplayedStatusMessageReturnsMessageForFailed()
+    {
+        var result = new DeliveryCallbackProcessingResult(
+            ShouldDeleteMessage: true,
+            Outcome: "applied",
+            ConsoleMessage: "failed line | Reason: unsubscribed",
+            MessageStatus: "failed");
+
+        var message = DeliveryCallbackWorker.BuildDisplayedStatusMessage(result);
+
+        Assert.Equal("failed line | Reason: unsubscribed", message);
+    }
+
+    [Theory]
+    [InlineData("queued")]
+    [InlineData("sent")]
+    [InlineData("undelivered")]
+    [InlineData(null)]
+    public void BuildDisplayedStatusMessageSuppressesNonTerminalStatuses(string? messageStatus)
+    {
+        var result = new DeliveryCallbackProcessingResult(
+            ShouldDeleteMessage: true,
+            Outcome: "applied",
+            ConsoleMessage: "suppressed line",
+            MessageStatus: messageStatus);
+
+        var message = DeliveryCallbackWorker.BuildDisplayedStatusMessage(result);
+
+        Assert.Null(message);
+    }
+
     private sealed class FakeAwsSqsClient(SqsQueueMessage? nextMessage) : IAwsSqsClient
     {
         public int DeleteCalls { get; private set; }

@@ -107,10 +107,10 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         try
         {
             var result = await processMessageAsync(message, stoppingToken);
-            WriteLineWithOptionalStatusColor(result.ConsoleMessage, result.MessageStatus);
             operationsMonitor.RecordLiveDeliveryLine(result.ConsoleMessage, DateTime.UtcNow);
             operationsMonitor.UpdateJob(activeJobId!, $"Last outcome: {result.Outcome}");
             operationsMonitor.ResolveWarnings(jobId: activeJobId);
+            WriteTerminalStatusLine(result);
 
             if (!result.ShouldDeleteMessage)
             {
@@ -171,9 +171,16 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         return await workflow.ProcessAsync(message, cancellationToken);
     }
 
-    private void WriteLineWithOptionalStatusColor(string message, string? messageStatus)
+    private void WriteTerminalStatusLine(DeliveryCallbackProcessingResult result)
     {
-        var color = GetMessageStatusConsoleColor(messageStatus);
+        var message = BuildDisplayedStatusMessage(result);
+
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return;
+        }
+
+        var color = GetMessageStatusConsoleColor(result.MessageStatus);
 
         if (color is null || !ReferenceEquals(output, Console.Out) || Console.IsOutputRedirected)
         {
@@ -192,6 +199,18 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         {
             Console.ForegroundColor = previousColor;
         }
+    }
+
+    internal static string? BuildDisplayedStatusMessage(DeliveryCallbackProcessingResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        return result.MessageStatus?.Trim().ToLowerInvariant() switch
+        {
+            "delivered" => result.ConsoleMessage,
+            "failed" => result.ConsoleMessage,
+            _ => null
+        };
     }
 
     internal static ConsoleColor? GetMessageStatusConsoleColor(string? messageStatus)

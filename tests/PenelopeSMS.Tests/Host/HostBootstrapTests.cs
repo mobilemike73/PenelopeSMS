@@ -60,7 +60,7 @@ public sealed class HostBootstrapTests
             [ConfigurationPath.Combine(AwsOptions.SectionName, nameof(AwsOptions.CallbackDeadLetterQueueUrl))] = "https://sqs.example.com/queue-dlq"
         };
 
-        using var host = CreateHost(configuration);
+        using var host = CreateHost(overrides: configuration);
 
         var oracle = host.Services.GetRequiredService<IOptions<OracleOptions>>().Value;
         var sqlServer = host.Services.GetRequiredService<IOptions<SqlServerOptions>>().Value;
@@ -90,16 +90,56 @@ public sealed class HostBootstrapTests
     [Fact]
     public void BuildHostRegistersDeliveryCallbackWorkerAsHostedService()
     {
-        using var host = CreateHost();
+        using var host = CreateHost(AppMode.Worker);
 
         var hostedServices = host.Services.GetServices<IHostedService>();
 
         Assert.Contains(hostedServices, service => service is DeliveryCallbackWorker);
     }
 
-    private static IHost CreateHost(IDictionary<string, string?>? overrides = null)
+    [Fact]
+    public void BuildHostDoesNotRegisterDeliveryCallbackWorkerInUiMode()
+    {
+        using var host = CreateHost(AppMode.Ui);
+
+        var hostedServices = host.Services.GetServices<IHostedService>();
+
+        Assert.DoesNotContain(hostedServices, service => service is DeliveryCallbackWorker);
+    }
+
+    [Fact]
+    public void ResolveAppModeDefaultsToUiMode()
+    {
+        var result = Program.ResolveAppMode(["--foo", "bar"]);
+
+        Assert.Equal(AppMode.Ui, result.Mode);
+        Assert.Equal(2, result.HostArgs.Length);
+    }
+
+    [Fact]
+    public void ResolveAppModeParsesUiModePrefix()
+    {
+        var result = Program.ResolveAppMode(["ui"]);
+
+        Assert.Equal(AppMode.Ui, result.Mode);
+        Assert.Empty(result.HostArgs);
+    }
+
+    [Fact]
+    public void ResolveAppModeParsesWorkerModePrefix()
+    {
+        var result = Program.ResolveAppMode(["worker", "--foo", "bar"]);
+
+        Assert.Equal(AppMode.Worker, result.Mode);
+        Assert.Equal(["--foo", "bar"], result.HostArgs);
+    }
+
+    private static IHost CreateHost(
+        AppMode mode = AppMode.Ui,
+        IDictionary<string, string?>? overrides = null)
     {
         return Program.BuildHost(
+            mode,
             configureBuilder: builder =>
             {
                 if (overrides is not null)

@@ -15,12 +15,19 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        using var host = BuildHost(args);
+        var (mode, hostArgs) = ResolveAppMode(args);
+        using var host = BuildHost(mode, hostArgs);
         WriteConfigurationDiagnostics(host.Services);
         await host.StartAsync();
 
         try
         {
+            if (mode == AppMode.Worker)
+            {
+                await host.WaitForShutdownAsync();
+                return 0;
+            }
+
             using var scope = host.Services.CreateScope();
             await scope.ServiceProvider.GetRequiredService<MainMenu>().RunAsync();
             return 0;
@@ -35,6 +42,14 @@ public static class Program
         string[]? args = null,
         Action<HostApplicationBuilder>? configureBuilder = null)
     {
+        return BuildHost(AppMode.Ui, args, configureBuilder);
+    }
+
+    internal static IHost BuildHost(
+        AppMode mode,
+        string[]? args = null,
+        Action<HostApplicationBuilder>? configureBuilder = null)
+    {
         var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
         {
             Args = args ?? [],
@@ -42,12 +57,14 @@ public static class Program
         });
         configureBuilder?.Invoke(builder);
 
-        ConfigureServices(builder);
+        ConfigureServices(builder, mode);
 
         return builder.Build();
     }
 
-    internal static void ConfigureServices(HostApplicationBuilder builder)
+    internal static void ConfigureServices(
+        HostApplicationBuilder builder,
+        AppMode mode = AppMode.Ui)
     {
         builder.Services
             .AddOptions<OracleOptions>()
@@ -71,7 +88,6 @@ public static class Program
         builder.Services.AddScoped<ICampaignCreationWorkflow, CampaignCreationWorkflow>();
         builder.Services.AddScoped<ICampaignSendWorkflow, CampaignSendWorkflow>();
         builder.Services.AddScoped<IDeliveryCallbackProcessingWorkflow, DeliveryCallbackProcessingWorkflow>();
-        builder.Services.AddHostedService<DeliveryCallbackWorker>();
         builder.Services.AddScoped<IEnrichmentWorkflow, EnrichmentWorkflow>();
         builder.Services.AddScoped<IEnrichmentRetryWorkflow, EnrichmentRetryWorkflow>();
         builder.Services.AddScoped<IImportWorkflow, ImportWorkflow>();
@@ -84,6 +100,11 @@ public static class Program
         builder.Services.AddScoped<MonitoringHtmlReportRenderer>();
         builder.Services.AddScoped<MonitoringScreenRenderer>();
         builder.Services.AddScoped<MainMenu>();
+
+        if (mode == AppMode.Worker)
+        {
+            builder.Services.AddHostedService<DeliveryCallbackWorker>();
+        }
     }
 
     private static void WriteConfigurationDiagnostics(IServiceProvider services)
@@ -110,4 +131,32 @@ public static class Program
 
         Console.WriteLine(File.ReadAllText(filePath));
     }
+
+    internal static (AppMode Mode, string[] HostArgs) ResolveAppMode(string[]? args)
+    {
+        if (args is null || args.Length == 0)
+        {
+            return (AppMode.Ui, []);
+        }
+
+        var firstArg = args[0].Trim();
+
+        if (string.Equals(firstArg, "worker", StringComparison.OrdinalIgnoreCase))
+        {
+            return (AppMode.Worker, args[1..]);
+        }
+
+        if (string.Equals(firstArg, "ui", StringComparison.OrdinalIgnoreCase))
+        {
+            return (AppMode.Ui, args[1..]);
+        }
+
+        return (AppMode.Ui, args);
+    }
+}
+
+internal enum AppMode
+{
+    Ui = 0,
+    Worker = 1
 }
