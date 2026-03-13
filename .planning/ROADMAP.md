@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Number Intelligence** - Enrich imported numbers with Twilio and derive campaign eligibility. (completed 2026-03-12)
 - [x] **Phase 3: Campaign Execution** - Create campaigns from template files and send SMS in configurable batches. (completed 2026-03-12)
 - [x] **Phase 4: Delivery Pipeline** - Ingest Twilio delivery callbacks through the callback pipeline and update message history. (completed 2026-03-12)
-- [ ] **Phase 5: Operator Monitoring** - Surface campaign progress, job visibility, and operational hardening in the console app.
+- [x] **Phase 5: Operator Monitoring** - Surface campaign progress, job visibility, and operational hardening in the console app. (completed 2026-03-13)
 
 ## Phase Details
 
@@ -94,9 +94,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: Add monitoring read models for campaign progress and persisted issue summaries
-- [ ] 05-02: Build shared runtime job monitoring and workflow instrumentation
-- [ ] 05-03: Add the monitoring screen, drill-in flow, and runtime integration coverage
+- [x] 05-01: Add monitoring read models for campaign progress and persisted issue summaries
+- [x] 05-02: Build shared runtime job monitoring and workflow instrumentation
+- [x] 05-03: Add the monitoring screen, drill-in flow, and runtime integration coverage
 
 ## Progress
 
@@ -109,4 +109,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Number Intelligence | 3/3 | Complete | 2026-03-12 |
 | 3. Campaign Execution | 3/3 | Complete | 2026-03-12 |
 | 4. Delivery Pipeline | 3/3 | Complete | 2026-03-12 |
-| 5. Operator Monitoring | 0/3 | Planned | - |
+| 5. Operator Monitoring | 3/3 | Complete | 2026-03-13 |

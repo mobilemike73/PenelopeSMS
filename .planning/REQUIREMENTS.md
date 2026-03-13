@@ -35,12 +35,12 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **MON-01**: App can ingest Twilio delivery-status callbacks through the configured callback pipeline without querying every Message SID individually.
 - [x] **MON-02**: App can consume Twilio delivery events from AWS SQS and apply them idempotently to the matching outbound message record.
 - [x] **MON-03**: App stores delivery status history, including status transition time, Twilio error code, and provider message when available.
-- [ ] **MON-04**: Operator can view campaign progress totals for pending, submitted, sent, delivered, undelivered, and failed recipients.
+- [x] **MON-04**: Operator can view campaign progress totals for pending, submitted, sent, delivered, undelivered, and failed recipients.
 
 ### Operations
 
 - [x] **OPER-01**: Operator can configure Oracle, SQL Server, Twilio, and AWS settings without modifying source code.
-- [ ] **OPER-02**: App writes console-visible progress and error information for import, enrichment, campaign send, and callback processing jobs.
+- [x] **OPER-02**: App writes console-visible progress and error information for import, enrichment, campaign send, and callback processing jobs.
 
 ## v2 Requirements
 
@@ -95,9 +95,9 @@ To be populated during roadmap creation.
 | MON-01 | Phase 4 | Complete |
 | MON-02 | Phase 4 | Complete |
 | MON-03 | Phase 4 | Complete |
-| MON-04 | Phase 5 | Pending |
+| MON-04 | Phase 5 | Complete |
 | OPER-01 | Phase 1 | Complete |
-| OPER-02 | Phase 5 | Pending |
+| OPER-02 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 20 total
@@ -106,4 +106,4 @@ To be populated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-12*
-*Last updated: 2026-03-12 after Phase 4 completion*
+*Last updated: 2026-03-13 after Phase 5 completion*
