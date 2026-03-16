@@ -23,7 +23,10 @@ public sealed record MonitoringDashboardSnapshot(
     IReadOnlyList<PersistedMonitoringIssueRecord> PersistedIssues,
     IReadOnlyList<MonitoringActiveJobRecord>? ActiveJobs = null,
     IReadOnlyList<MonitoringWarningRecord>? ActiveWarnings = null,
-    IReadOnlyList<string>? LiveDeliveryLines = null)
+    IReadOnlyList<string>? LiveDeliveryLines = null,
+    MonitoringQueueStatusRecord? QueueStatus = null,
+    MonitoringQueueRatesRecord? QueueRates = null,
+    MonitoringQueueRatesRecord? TwilioInFlightRates = null)
 {
     public IReadOnlyList<MonitoringActiveJobRecord> ActiveJobsOrEmpty => ActiveJobs ?? [];
 
@@ -54,3 +57,13 @@ public sealed record MonitoringCompletedJobRecord(
     DateTime CompletedAtUtc,
     string Summary,
     bool IsLiveSession);
+
+public sealed record MonitoringQueueStatusRecord(
+    int VisibleMessages,
+    int MessagesInFlight);
+
+public sealed record MonitoringQueueRatesRecord(
+    double? CurrentMessagesPerSecond,
+    double? OneMinuteAverageMessagesPerSecond,
+    double? FiveMinuteAverageMessagesPerSecond,
+    double? TenMinuteAverageMessagesPerSecond);

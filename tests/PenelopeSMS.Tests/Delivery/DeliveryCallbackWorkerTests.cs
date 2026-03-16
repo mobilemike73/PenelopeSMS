@@ -14,6 +14,7 @@ public sealed class DeliveryCallbackWorkerTests
     {
         var sqsClient = new FakeAwsSqsClient(
             new SqsQueueMessage("message-1", "{}", "receipt-1"));
+        var output = new StringWriter();
         var worker = new DeliveryCallbackWorker(
             sqsClient,
             Options.Create(new AwsOptions
@@ -25,11 +26,12 @@ public sealed class DeliveryCallbackWorkerTests
                 Outcome: "applied",
                 ConsoleMessage: "applied")),
             new OperationsMonitor(),
-            TextWriter.Null);
+            output);
 
         await worker.ProcessSingleIterationAsync();
 
         Assert.Equal(1, sqsClient.DeleteCalls);
+        Assert.DoesNotContain("Deleted queue message", output.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -150,6 +152,48 @@ public sealed class DeliveryCallbackWorkerTests
         Assert.Equal("failed line | Reason: unsubscribed", message);
     }
 
+    [Fact]
+    public void GetWorkerConcurrencyReturnsConfiguredValueWhenPositive()
+    {
+        var concurrency = DeliveryCallbackWorker.GetWorkerConcurrency(new AwsOptions
+        {
+            CallbackWorkerConcurrency = 6
+        });
+
+        Assert.Equal(6, concurrency);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public void GetWorkerConcurrencyFallsBackToOneWhenConfiguredValueIsInvalid(int configuredValue)
+    {
+        var concurrency = DeliveryCallbackWorker.GetWorkerConcurrency(new AwsOptions
+        {
+            CallbackWorkerConcurrency = configuredValue
+        });
+
+        Assert.Equal(1, concurrency);
+    }
+
+    [Fact]
+    public void BuildDisplayedStatusMessageAppendsFailureDetailWhenMissingFromConsoleMessage()
+    {
+        var result = new DeliveryCallbackProcessingResult(
+            ShouldDeleteMessage: true,
+            Outcome: "applied",
+            ConsoleMessage: "failed line",
+            MessageStatus: "failed",
+            FailureCode: "21610",
+            FailureMessage: "Attempt to send to unsubscribed recipient");
+
+        var message = DeliveryCallbackWorker.BuildDisplayedStatusMessage(result);
+
+        Assert.Equal(
+            "failed line | Reason: 21610 | Attempt to send to unsubscribed recipient",
+            message);
+    }
+
     [Theory]
     [InlineData("queued")]
     [InlineData("sent")]
@@ -179,6 +223,11 @@ public sealed class DeliveryCallbackWorkerTests
             return Task.FromResult(message);
         }
 
+        public Task<SqsQueueDepthSnapshot> GetQueueDepthAsync(string queueUrl, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new SqsQueueDepthSnapshot(0, 0));
+        }
+
         public Task DeleteMessageAsync(string queueUrl, string receiptHandle, CancellationToken cancellationToken = default)
         {
             DeleteCalls++;
@@ -193,6 +242,11 @@ public sealed class DeliveryCallbackWorkerTests
         public Task<SqsQueueMessage?> ReceiveMessageAsync(string queueUrl, CancellationToken cancellationToken = default)
         {
             throw new InvalidOperationException("receive failed");
+        }
+
+        public Task<SqsQueueDepthSnapshot> GetQueueDepthAsync(string queueUrl, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new SqsQueueDepthSnapshot(0, 0));
         }
 
         public Task DeleteMessageAsync(string queueUrl, string receiptHandle, CancellationToken cancellationToken = default)

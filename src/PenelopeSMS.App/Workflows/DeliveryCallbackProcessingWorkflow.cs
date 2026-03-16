@@ -138,7 +138,9 @@ public sealed class DeliveryCallbackProcessingWorkflow(
             ShouldDeleteMessage: applyResult.ShouldDeleteMessage,
             Outcome: applyResult.Outcome,
             ConsoleMessage: BuildConsoleMessage(message.MessageId, envelope, applyResult),
-            MessageStatus: envelope.MessageStatus);
+            MessageStatus: envelope.MessageStatus,
+            FailureCode: envelope.ProviderErrorCode,
+            FailureMessage: envelope.ProviderErrorMessage);
     }
 
     private static string BuildConsoleMessage(
@@ -146,7 +148,46 @@ public sealed class DeliveryCallbackProcessingWorkflow(
         DeliveryCallbackQueueEnvelope envelope,
         DeliveryCallbackApplyResult applyResult)
     {
-        return $"Processed callback queue message {messageId}: {applyResult.Outcome} | SID: {envelope.MessageSid ?? "missing"} | Status: {envelope.MessageStatus ?? "missing"}";
+        var message =
+            $"Processed callback queue message {messageId}: {applyResult.Outcome} | SID: {envelope.MessageSid ?? "missing"} | Status: {envelope.MessageStatus ?? "missing"}";
+
+        if (IsFailureStatus(envelope.MessageStatus))
+        {
+            var failureDetail = BuildFailureDetail(envelope.ProviderErrorCode, envelope.ProviderErrorMessage);
+
+            if (!string.IsNullOrWhiteSpace(failureDetail))
+            {
+                message = $"{message} | Reason: {failureDetail}";
+            }
+        }
+
+        return message;
+    }
+
+    private static bool IsFailureStatus(string? messageStatus)
+    {
+        return string.Equals(messageStatus, "failed", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(messageStatus, "undelivered", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? BuildFailureDetail(string? providerErrorCode, string? providerErrorMessage)
+    {
+        var code = providerErrorCode?.Trim();
+        var message = providerErrorMessage?.Trim();
+
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(message))
+        {
+            return $"{code} | {message}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            return message;
+        }
+
+        return string.IsNullOrWhiteSpace(code)
+            ? null
+            : code;
     }
 
     private async Task StoreRejectedAsync(

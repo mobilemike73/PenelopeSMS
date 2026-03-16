@@ -11,6 +11,9 @@ public sealed class MonitoringMenuActionTests
     [Fact]
     public async Task ExecuteAsyncTogglesCompletedCampaignVisibility()
     {
+        var timeProvider = new MutableTimeProvider(
+            new DateTimeOffset(2026, 03, 13, 12, 30, 00, TimeSpan.Zero),
+            TimeSpan.FromSeconds(5));
         var workflow = new FakeMonitoringWorkflow(
             hiddenDashboard: CreateDashboard(includeCompletedCampaigns: false),
             visibleDashboard: CreateDashboard(includeCompletedCampaigns: true),
@@ -21,7 +24,7 @@ public sealed class MonitoringMenuActionTests
             new MonitoringScreenRenderer(),
             new StringReader("c\n0\n"),
             output,
-            new FixedTimeProvider(new DateTimeOffset(2026, 03, 13, 12, 30, 00, TimeSpan.Zero)),
+            timeProvider,
             TimeSpan.FromMinutes(1));
 
         await action.ExecuteAsync();
@@ -40,6 +43,14 @@ public sealed class MonitoringMenuActionTests
         Assert.Contains("Completed campaigns: shown", renderedOutput, StringComparison.Ordinal);
         Assert.DoesNotContain("[2] Archived campaign", hiddenSegment, StringComparison.Ordinal);
         Assert.Contains("[2] Archived campaign", shownSegment, StringComparison.Ordinal);
+        Assert.Contains("SQS callback queue", renderedOutput, StringComparison.Ordinal);
+        Assert.Contains("Visible: 100 | In flight: 3", renderedOutput, StringComparison.Ordinal);
+        Assert.Contains("Current drain rate: 4.00 msg/s", renderedOutput, StringComparison.Ordinal);
+        Assert.Contains("Twilio in-flight", renderedOutput, StringComparison.Ordinal);
+        Assert.Contains("Total recipients awaiting terminal callback: 4", renderedOutput, StringComparison.Ordinal);
+        Assert.Contains("Current drain rate: 0.20 msg/s", shownSegment, StringComparison.Ordinal);
+        Assert.Contains("Total recipients awaiting terminal callback: 3", shownSegment, StringComparison.Ordinal);
+        Assert.Contains("[1] Active campaign | In-flight: 3 | Submitted: 1 | Queued: 1 | Sent: 1", shownSegment, StringComparison.Ordinal);
         Assert.Contains("Warnings", renderedOutput, StringComparison.Ordinal);
         Assert.Contains("Live delivery", renderedOutput, StringComparison.Ordinal);
     }
@@ -57,7 +68,7 @@ public sealed class MonitoringMenuActionTests
             new MonitoringScreenRenderer(),
             new StringReader("1\n0\n0\n"),
             output,
-            new FixedTimeProvider(new DateTimeOffset(2026, 03, 13, 12, 30, 00, TimeSpan.Zero)),
+            new MutableTimeProvider(new DateTimeOffset(2026, 03, 13, 12, 30, 00, TimeSpan.Zero)),
             TimeSpan.FromMinutes(1));
 
         await action.ExecuteAsync();
@@ -83,7 +94,7 @@ public sealed class MonitoringMenuActionTests
             new MonitoringScreenRenderer(),
             new StringReader("e\n\n0\n"),
             output,
-            new FixedTimeProvider(new DateTimeOffset(2026, 03, 13, 12, 30, 00, TimeSpan.Zero)),
+            new MutableTimeProvider(new DateTimeOffset(2026, 03, 13, 12, 30, 00, TimeSpan.Zero)),
             TimeSpan.FromMinutes(1));
 
         await action.ExecuteAsync();
@@ -102,7 +113,7 @@ public sealed class MonitoringMenuActionTests
                 100,
                 CampaignStatus.Sending,
                 4,
-                2,
+                includeCompletedCampaigns ? 1 : 2,
                 1,
                 1,
                 5,
@@ -171,7 +182,10 @@ public sealed class MonitoringMenuActionTests
             LiveDeliveryLines:
             [
                 "[12:09:00] Deleted queue message message-1 after applied."
-            ]);
+            ],
+            QueueStatus: new MonitoringQueueStatusRecord(
+                VisibleMessages: includeCompletedCampaigns ? 80 : 100,
+                MessagesInFlight: 3));
     }
 
     private static CampaignMonitoringDetailRecord CreateDetail()
@@ -239,8 +253,21 @@ public sealed class MonitoringMenuActionTests
         }
     }
 
-    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    private sealed class MutableTimeProvider(DateTimeOffset now, TimeSpan? advancePerRead = null) : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => now;
+        private DateTimeOffset current = now;
+        private readonly TimeSpan increment = advancePerRead ?? TimeSpan.Zero;
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            var result = current;
+            current += increment;
+            return result;
+        }
+
+        public void AdvanceBy(TimeSpan delta)
+        {
+            current += delta;
+        }
     }
 }

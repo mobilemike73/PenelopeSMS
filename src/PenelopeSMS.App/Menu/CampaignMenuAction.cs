@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.App.Options;
+using PenelopeSMS.App.Services;
 using PenelopeSMS.Domain.Enums;
 using PenelopeSMS.Infrastructure.SqlServer.Repositories;
 
@@ -9,6 +10,7 @@ namespace PenelopeSMS.App.Menu;
 public sealed class CampaignMenuAction(
     ICampaignCreationWorkflow campaignCreationWorkflow,
     ICampaignSendWorkflow campaignSendWorkflow,
+    ICampaignSendDispatcher campaignSendDispatcher,
     IOptions<TwilioOptions> twilioOptions)
 {
     private readonly TextReader input = Console.In;
@@ -126,12 +128,29 @@ public sealed class CampaignMenuAction(
 
         try
         {
-            var result = await campaignSendWorkflow.SendNextBatchAsync(
+            var selectedCampaign = sendableCampaigns.SingleOrDefault(campaign => campaign.CampaignId == campaignId);
+
+            if (selectedCampaign is null)
+            {
+                output.WriteLine("Campaign not found or has no pending recipients.");
+                output.WriteLine();
+                return;
+            }
+
+            var dispatchResult = await campaignSendDispatcher.QueueNextBatchAsync(
                 campaignId,
                 cancellationToken);
 
+            if (!dispatchResult.WasQueued)
+            {
+                output.WriteLine(
+                    $"Campaign batch for {selectedCampaign.CampaignName} is already queued or running.");
+                output.WriteLine();
+                return;
+            }
+
             output.WriteLine(
-                $"Campaign batch sent for {result.CampaignName}. Attempted: {result.AttemptedRecipients}, Accepted: {result.AcceptedRecipients}, Failed: {result.FailedRecipients}, Remaining pending: {result.RemainingPendingRecipients}");
+                $"Campaign batch queued for {selectedCampaign.CampaignName}. Up to {selectedCampaign.BatchSize} recipients will be submitted in the background. Use Monitor operations to watch progress.");
 
             if (string.IsNullOrWhiteSpace(twilioOptions.Value.StatusCallbackUrl))
             {

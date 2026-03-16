@@ -1,6 +1,9 @@
 using System.Text;
 using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.App.Rendering;
+using PenelopeSMS.App.Options;
+using Microsoft.Extensions.Options;
+using PenelopeSMS.Infrastructure.Aws;
 using PenelopeSMS.Infrastructure.SqlServer.Queries;
 
 namespace PenelopeSMS.App.Workflows;
@@ -10,6 +13,8 @@ public sealed class MonitoringWorkflow(
     OperationsIssueQuery operationsIssueQuery,
     MonitoringHtmlReportQuery monitoringHtmlReportQuery,
     IOperationsMonitor operationsMonitor,
+    IAwsSqsClient awsSqsClient,
+    IOptions<AwsOptions> awsOptions,
     TimeProvider? timeProvider = null) : IMonitoringWorkflow
 {
     private readonly TimeProvider reportTimeProvider = timeProvider ?? TimeProvider.System;
@@ -24,6 +29,7 @@ public sealed class MonitoringWorkflow(
         var persistedCompletedJobs = await operationsIssueQuery.ListRecentCompletedJobsAsync(cancellationToken);
         var persistedIssues = await operationsIssueQuery.ListActiveIssuesAsync(cancellationToken);
         var runtimeSnapshot = operationsMonitor.GetSnapshot();
+        var queueStatus = await GetQueueStatusAsync(cancellationToken);
 
         return new MonitoringDashboardSnapshot(
             Campaigns: campaigns,
@@ -45,7 +51,8 @@ public sealed class MonitoringWorkflow(
                     warning.Message,
                     warning.CreatedAtUtc))
                 .ToList(),
-            LiveDeliveryLines: runtimeSnapshot.LiveDeliveryLines);
+            LiveDeliveryLines: runtimeSnapshot.LiveDeliveryLines,
+            QueueStatus: queueStatus);
     }
 
     public async Task<CampaignMonitoringDetailRecord> GetCampaignDetailAsync(
@@ -167,5 +174,30 @@ public sealed class MonitoringWorkflow(
 
         var fileName = $"penelope-monitoring-report-{generatedAtUtc:yyyyMMdd-HHmmss}.html";
         return Path.Combine(Directory.GetCurrentDirectory(), "reports", fileName);
+    }
+
+    private async Task<MonitoringQueueStatusRecord?> GetQueueStatusAsync(CancellationToken cancellationToken)
+    {
+        var queueUrl = awsOptions.Value.CallbackQueueUrl;
+
+        if (string.IsNullOrWhiteSpace(queueUrl))
+        {
+            return null;
+        }
+
+        try
+        {
+            var depth = await awsSqsClient.GetQueueDepthAsync(queueUrl, cancellationToken);
+            return new MonitoringQueueStatusRecord(
+                depth.VisibleMessages,
+                depth.MessagesInFlight);
+        }
+        catch (Exception exception)
+        {
+            operationsMonitor.Warn(
+                OperationType.DeliveryProcessing,
+                $"Unable to read callback queue depth: {exception.Message}");
+            return null;
+        }
     }
 }

@@ -1,12 +1,15 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PenelopeSMS.App.Monitoring;
+using PenelopeSMS.App.Options;
 using PenelopeSMS.App.Rendering;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.Domain.Entities;
 using PenelopeSMS.Domain.Enums;
+using PenelopeSMS.Infrastructure.Aws;
 using PenelopeSMS.Infrastructure.SqlServer;
 using PenelopeSMS.Infrastructure.SqlServer.Queries;
+using Microsoft.Extensions.Options;
 
 namespace PenelopeSMS.Tests.Monitoring;
 
@@ -48,10 +51,23 @@ public sealed class MonitoringRuntimeIntegrationTests
             new CampaignMonitoringQuery(database.DbContext),
             new OperationsIssueQuery(database.DbContext),
             new MonitoringHtmlReportQuery(database.DbContext),
-            monitor);
+            monitor,
+            new FakeAwsSqsClient(new SqsQueueDepthSnapshot(1, 0)),
+            Options.Create(new AwsOptions
+            {
+                CallbackQueueUrl = "https://sqs.example.com/queue"
+            }));
 
         var dashboard = await workflow.GetDashboardAsync(includeCompletedCampaigns: true);
 
+        Assert.Contains(dashboard.Campaigns, campaign => campaign.SubmittedRecipients == 1);
+        var renderedDashboard = new MonitoringScreenRenderer().RenderDashboard(
+            dashboard,
+            includeCompletedCampaigns: true,
+            refreshedAtUtc: new DateTime(2026, 03, 13, 12, 21, 00, DateTimeKind.Utc));
+
+        Assert.Contains("Twilio in-flight", renderedDashboard, StringComparison.Ordinal);
+        Assert.Contains("Total recipients awaiting terminal callback: 1", renderedDashboard, StringComparison.Ordinal);
         Assert.Contains(dashboard.ActiveJobsOrEmpty, job => job.JobType == "Delivery processing");
         Assert.Contains(dashboard.ActiveWarningsOrEmpty, warning => warning.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(dashboard.LiveDeliveryLinesOrEmpty, line => line.Contains("message-1", StringComparison.Ordinal));
@@ -135,6 +151,24 @@ public sealed class MonitoringRuntimeIntegrationTests
         {
             await DbContext.DisposeAsync();
             await Connection.DisposeAsync();
+        }
+    }
+
+    private sealed class FakeAwsSqsClient(SqsQueueDepthSnapshot depthSnapshot) : IAwsSqsClient
+    {
+        public Task<SqsQueueMessage?> ReceiveMessageAsync(string queueUrl, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<SqsQueueMessage?>(null);
+        }
+
+        public Task<SqsQueueDepthSnapshot> GetQueueDepthAsync(string queueUrl, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(depthSnapshot);
+        }
+
+        public Task DeleteMessageAsync(string queueUrl, string receiptHandle, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 }

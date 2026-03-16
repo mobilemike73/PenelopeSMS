@@ -50,6 +50,8 @@ public sealed class MonitoringScreenRenderer
         builder.AppendLine("Commands: [campaign id] drill-in | e export HTML report | c toggle completed | r refresh | 0 back");
         builder.AppendLine();
 
+        AppendQueueStatus(builder, snapshot);
+        AppendTwilioInFlight(builder, snapshot);
         AppendActiveJobs(builder, snapshot.ActiveJobsOrEmpty);
         AppendWarnings(builder, snapshot);
         AppendCampaigns(builder, snapshot.Campaigns, includeCompletedCampaigns);
@@ -115,6 +117,77 @@ public sealed class MonitoringScreenRenderer
                 Invariant($"[{job.JobType}] {job.Label} | {job.State} | Started: {job.StartedAtUtc:HH:mm:ss} UTC | {job.ProgressDetail ?? "No progress detail"}"));
         }
 
+        builder.AppendLine();
+    }
+
+    private static void AppendTwilioInFlight(
+        StringBuilder builder,
+        MonitoringDashboardSnapshot snapshot)
+    {
+        builder.AppendLine("Twilio in-flight");
+
+        var inFlightCampaigns = snapshot.Campaigns
+            .Select(campaign => new
+            {
+                Campaign = campaign,
+                InFlightRecipients = campaign.SubmittedRecipients + campaign.QueuedRecipients + campaign.SentRecipients
+            })
+            .Where(item => item.InFlightRecipients > 0)
+            .OrderByDescending(item => item.InFlightRecipients)
+            .ThenByDescending(item => item.Campaign.LastActivityAtUtc)
+            .ThenByDescending(item => item.Campaign.CampaignId)
+            .ToList();
+
+        if (inFlightCampaigns.Count == 0)
+        {
+            builder.AppendLine("None");
+            builder.AppendLine();
+            return;
+        }
+
+        var totalInFlightRecipients = inFlightCampaigns.Sum(item => item.InFlightRecipients);
+        builder.AppendLine(Invariant($"Total recipients awaiting terminal callback: {totalInFlightRecipients}"));
+        builder.AppendLine(Invariant(
+            $"Current drain rate: {FormatRate(snapshot.TwilioInFlightRates?.CurrentMessagesPerSecond)} msg/s"));
+        builder.AppendLine(Invariant(
+            $"1m avg: {FormatRate(snapshot.TwilioInFlightRates?.OneMinuteAverageMessagesPerSecond)} msg/s | 5m avg: {FormatRate(snapshot.TwilioInFlightRates?.FiveMinuteAverageMessagesPerSecond)} msg/s | 10m avg: {FormatRate(snapshot.TwilioInFlightRates?.TenMinuteAverageMessagesPerSecond)} msg/s"));
+
+        foreach (var item in inFlightCampaigns)
+        {
+            builder.AppendLine(Invariant(
+                $"[{item.Campaign.CampaignId}] {item.Campaign.CampaignName} | In-flight: {item.InFlightRecipients} | Submitted: {item.Campaign.SubmittedRecipients} | Queued: {item.Campaign.QueuedRecipients} | Sent: {item.Campaign.SentRecipients}"));
+        }
+
+        builder.AppendLine();
+    }
+
+    private static void AppendQueueStatus(
+        StringBuilder builder,
+        MonitoringDashboardSnapshot snapshot)
+    {
+        builder.AppendLine("SQS callback queue");
+
+        if (snapshot.QueueStatus is null)
+        {
+            builder.AppendLine("Unavailable");
+            builder.AppendLine();
+            return;
+        }
+
+        builder.AppendLine(Invariant(
+            $"Visible: {snapshot.QueueStatus.VisibleMessages} | In flight: {snapshot.QueueStatus.MessagesInFlight}"));
+
+        if (snapshot.QueueRates is null)
+        {
+            builder.AppendLine("Drain rate: collecting samples");
+            builder.AppendLine();
+            return;
+        }
+
+        builder.AppendLine(Invariant(
+            $"Current drain rate: {FormatRate(snapshot.QueueRates.CurrentMessagesPerSecond)} msg/s"));
+        builder.AppendLine(Invariant(
+            $"1m avg: {FormatRate(snapshot.QueueRates.OneMinuteAverageMessagesPerSecond)} msg/s | 5m avg: {FormatRate(snapshot.QueueRates.FiveMinuteAverageMessagesPerSecond)} msg/s | 10m avg: {FormatRate(snapshot.QueueRates.TenMinuteAverageMessagesPerSecond)} msg/s"));
         builder.AppendLine();
     }
 
@@ -223,6 +296,13 @@ public sealed class MonitoringScreenRenderer
         DateTime OccurredAtUtc,
         string Source,
         string Message);
+
+    private static string FormatRate(double? rate)
+    {
+        return rate.HasValue
+            ? rate.Value.ToString("0.00", CultureInfo.InvariantCulture)
+            : "-";
+    }
 
     private static string Invariant(FormattableString value)
     {

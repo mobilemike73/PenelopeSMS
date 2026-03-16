@@ -84,6 +84,8 @@ public static class Program
 
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddSingleton<IOperationsMonitor, OperationsMonitor>();
+        builder.Services.AddSingleton<CampaignSendDispatcher>();
+        builder.Services.AddSingleton<ICampaignSendDispatcher>(services => services.GetRequiredService<CampaignSendDispatcher>());
         builder.Services.AddScoped<IPlainTextTemplateLoader, FilePlainTextTemplateLoader>();
         builder.Services.AddScoped<ICampaignCreationWorkflow, CampaignCreationWorkflow>();
         builder.Services.AddScoped<ICampaignSendWorkflow, CampaignSendWorkflow>();
@@ -104,6 +106,10 @@ public static class Program
         if (mode == AppMode.Worker)
         {
             builder.Services.AddHostedService<DeliveryCallbackWorker>();
+        }
+        else
+        {
+            builder.Services.AddHostedService<CampaignSendDispatcher>(services => services.GetRequiredService<CampaignSendDispatcher>());
         }
     }
 

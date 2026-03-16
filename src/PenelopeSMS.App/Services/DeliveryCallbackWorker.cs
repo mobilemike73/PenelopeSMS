@@ -59,11 +59,15 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         }
 
         EnsureJobStarted();
+        var workerCount = GetWorkerConcurrency(awsOptions.Value);
+        operationsMonitor.UpdateJob(activeJobId!, $"Waiting for queue messages ({workerCount} worker(s))");
 
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            await ProcessSingleIterationAsync(stoppingToken);
-        }
+        var workerTasks = Enumerable
+            .Range(0, workerCount)
+            .Select(_ => RunReceiveLoopAsync(stoppingToken))
+            .ToArray();
+
+        await Task.WhenAll(workerTasks);
     }
 
     internal async Task ProcessSingleIterationAsync(CancellationToken stoppingToken = default)
@@ -122,7 +126,6 @@ public sealed class DeliveryCallbackWorker : BackgroundService
 
             await awsSqsClient.DeleteMessageAsync(queueUrl, message.ReceiptHandle, stoppingToken);
             var deletedMessage = $"Deleted queue message {message.MessageId} after {result.Outcome}.";
-            output.WriteLine(deletedMessage);
             operationsMonitor.RecordLiveDeliveryLine(deletedMessage, DateTime.UtcNow);
         }
         catch (Exception exception)
@@ -146,6 +149,14 @@ public sealed class DeliveryCallbackWorker : BackgroundService
             "Delivery callback processing",
             "Waiting for queue messages");
         warnedMissingQueue = false;
+    }
+
+    private async Task RunReceiveLoopAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await ProcessSingleIterationAsync(stoppingToken);
+        }
     }
 
     private void WarnForMissingQueue()
@@ -208,9 +219,42 @@ public sealed class DeliveryCallbackWorker : BackgroundService
         return result.MessageStatus?.Trim().ToLowerInvariant() switch
         {
             "delivered" => result.ConsoleMessage,
-            "failed" => result.ConsoleMessage,
+            "failed" => BuildFailedStatusMessage(result),
             _ => null
         };
+    }
+
+    private static string BuildFailedStatusMessage(DeliveryCallbackProcessingResult result)
+    {
+        var failureDetail = BuildFailureDetail(result.FailureCode, result.FailureMessage);
+
+        if (string.IsNullOrWhiteSpace(failureDetail)
+            || result.ConsoleMessage.Contains(" | Reason: ", StringComparison.Ordinal))
+        {
+            return result.ConsoleMessage;
+        }
+
+        return $"{result.ConsoleMessage} | Reason: {failureDetail}";
+    }
+
+    private static string? BuildFailureDetail(string? failureCode, string? failureMessage)
+    {
+        var code = failureCode?.Trim();
+        var message = failureMessage?.Trim();
+
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(message))
+        {
+            return $"{code} | {message}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            return message;
+        }
+
+        return string.IsNullOrWhiteSpace(code)
+            ? null
+            : code;
     }
 
     internal static ConsoleColor? GetMessageStatusConsoleColor(string? messageStatus)
@@ -221,5 +265,11 @@ public sealed class DeliveryCallbackWorker : BackgroundService
             "failed" => ConsoleColor.Red,
             _ => null
         };
+    }
+
+    internal static int GetWorkerConcurrency(AwsOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return Math.Max(1, options.CallbackWorkerConcurrency);
     }
 }

@@ -72,6 +72,66 @@ public sealed class DeliveryCallbackProcessingWorkflowTests
         Assert.Equal("unsupported_delivery_status", rejectedCallback.RejectionReason);
     }
 
+    [Fact]
+    public async Task ProcessAsyncIncludesFailureReasonInConsoleMessage()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        var recipient = await CreateRecipientAsync(database.DbContext, "SM123");
+        var workflow = new DeliveryCallbackProcessingWorkflow(
+            new DeliveryCallbackRepository(database.DbContext),
+            new RejectedDeliveryCallbackRepository(database.DbContext));
+
+        var result = await workflow.ProcessAsync(new SqsQueueMessage(
+            MessageId: "msg-4",
+            Body: """
+                {"EnvelopeType":"delivery","MessageSid":"SM123","MessageStatus":"failed","ProviderErrorCode":"21610","ProviderErrorMessage":"Attempt to send to unsubscribed recipient","RawPayloadJson":"{}","ReceivedAtUtc":"2026-03-13T00:00:00Z"}
+                """,
+            ReceiptHandle: "receipt-4"));
+
+        Assert.True(result.ShouldDeleteMessage);
+        Assert.Equal("failed", result.MessageStatus);
+        Assert.Equal("21610", result.FailureCode);
+        Assert.Equal("Attempt to send to unsubscribed recipient", result.FailureMessage);
+        Assert.Contains("Reason: 21610 | Attempt to send to unsubscribed recipient", result.ConsoleMessage);
+    }
+
+    private static async Task<PenelopeSMS.Domain.Entities.CampaignRecipient> CreateRecipientAsync(
+        PenelopeSmsDbContext dbContext,
+        string messageSid)
+    {
+        var record = new PenelopeSMS.Domain.Entities.PhoneNumberRecord
+        {
+            CanonicalPhoneNumber = "+15555550123",
+            CreatedAtUtc = new DateTime(2026, 03, 13, 0, 0, 0, DateTimeKind.Utc),
+            LastImportedAtUtc = new DateTime(2026, 03, 13, 0, 0, 0, DateTimeKind.Utc)
+        };
+
+        var campaign = new PenelopeSMS.Domain.Entities.Campaign
+        {
+            Name = "Test",
+            TemplateFilePath = "test.txt",
+            TemplateBody = "Hello",
+            BatchSize = 1,
+            Status = PenelopeSMS.Domain.Enums.CampaignStatus.Draft
+        };
+
+        var recipient = new PenelopeSMS.Domain.Entities.CampaignRecipient
+        {
+            Campaign = campaign,
+            PhoneNumberRecord = record,
+            Status = PenelopeSMS.Domain.Enums.CampaignRecipientStatus.Sent,
+            TwilioMessageSid = messageSid,
+            SubmittedAtUtc = new DateTime(2026, 03, 13, 0, 0, 0, DateTimeKind.Utc),
+            LastAttemptedAtUtc = new DateTime(2026, 03, 13, 0, 0, 0, DateTimeKind.Utc),
+            CurrentStatusAtUtc = new DateTime(2026, 03, 13, 0, 0, 0, DateTimeKind.Utc),
+            CurrentStatusTimeSource = PenelopeSMS.Domain.Enums.DeliveryEventTimeSource.CallbackReceivedAt
+        };
+
+        dbContext.CampaignRecipients.Add(recipient);
+        await dbContext.SaveChangesAsync();
+        return recipient;
+    }
+
     private sealed class SqliteTestDatabase : IAsyncDisposable
     {
         private SqliteTestDatabase(SqliteConnection connection, PenelopeSmsDbContext dbContext)

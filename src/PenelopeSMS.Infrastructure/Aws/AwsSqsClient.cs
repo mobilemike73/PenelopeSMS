@@ -74,6 +74,32 @@ public sealed class AwsSqsClient : IAwsSqsClient, IDisposable
                 message.ReceiptHandle);
     }
 
+    public async Task<SqsQueueDepthSnapshot> GetQueueDepthAsync(
+        string queueUrl,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(queueUrl);
+
+        var response = await sqsClient.GetQueueAttributesAsync(new GetQueueAttributesRequest
+        {
+            QueueUrl = queueUrl,
+            AttributeNames =
+            [
+                QueueAttributeName.ApproximateNumberOfMessages,
+                QueueAttributeName.ApproximateNumberOfMessagesNotVisible
+            ]
+        }, cancellationToken);
+
+        var visibleMessages = TryParseAttributeValue(
+            response.Attributes,
+            QueueAttributeName.ApproximateNumberOfMessages);
+        var messagesInFlight = TryParseAttributeValue(
+            response.Attributes,
+            QueueAttributeName.ApproximateNumberOfMessagesNotVisible);
+
+        return new SqsQueueDepthSnapshot(visibleMessages, messagesInFlight);
+    }
+
     public Task DeleteMessageAsync(
         string queueUrl,
         string receiptHandle,
@@ -88,5 +114,19 @@ public sealed class AwsSqsClient : IAwsSqsClient, IDisposable
     public void Dispose()
     {
         sqsClient.Dispose();
+    }
+
+    private static int TryParseAttributeValue(
+        IReadOnlyDictionary<string, string>? attributes,
+        string attributeName)
+    {
+        if (attributes is not null
+            && attributes.TryGetValue(attributeName, out var attributeValue)
+            && int.TryParse(attributeValue, out var parsedAttributeValue))
+        {
+            return parsedAttributeValue;
+        }
+
+        return 0;
     }
 }

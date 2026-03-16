@@ -2,11 +2,14 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PenelopeSMS.App.Monitoring;
 using PenelopeSMS.App.Rendering;
+using PenelopeSMS.App.Options;
 using PenelopeSMS.App.Workflows;
 using PenelopeSMS.Domain.Entities;
 using PenelopeSMS.Domain.Enums;
+using PenelopeSMS.Infrastructure.Aws;
 using PenelopeSMS.Infrastructure.SqlServer;
 using PenelopeSMS.Infrastructure.SqlServer.Queries;
+using Microsoft.Extensions.Options;
 
 namespace PenelopeSMS.Tests.Monitoring;
 
@@ -76,7 +79,12 @@ public sealed class MonitoringWorkflowTests
             new CampaignMonitoringQuery(dbContext),
             new OperationsIssueQuery(dbContext),
             new MonitoringHtmlReportQuery(dbContext),
-            operationsMonitor);
+            operationsMonitor,
+            new FakeAwsSqsClient(new SqsQueueDepthSnapshot(12, 2)),
+            Options.Create(new AwsOptions
+            {
+                CallbackQueueUrl = "https://sqs.example.com/queue"
+            }));
     }
 
     private static async Task SeedAsync(PenelopeSmsDbContext dbContext)
@@ -211,6 +219,24 @@ public sealed class MonitoringWorkflowTests
         {
             await DbContext.DisposeAsync();
             await Connection.DisposeAsync();
+        }
+    }
+
+    private sealed class FakeAwsSqsClient(SqsQueueDepthSnapshot depthSnapshot) : IAwsSqsClient
+    {
+        public Task<SqsQueueMessage?> ReceiveMessageAsync(string queueUrl, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<SqsQueueMessage?>(null);
+        }
+
+        public Task<SqsQueueDepthSnapshot> GetQueueDepthAsync(string queueUrl, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(depthSnapshot);
+        }
+
+        public Task DeleteMessageAsync(string queueUrl, string receiptHandle, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 }

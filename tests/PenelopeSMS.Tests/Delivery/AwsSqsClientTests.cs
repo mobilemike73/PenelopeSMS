@@ -21,14 +21,46 @@ public sealed class AwsSqsClientTests
         Assert.Null(message);
     }
 
-    private sealed class FakeAmazonSqsClient(ReceiveMessageResponse response)
+    [Fact]
+    public async Task GetQueueDepthAsyncReturnsParsedAttributes()
+    {
+        using var sqsClient = new AwsSqsClient(new FakeAmazonSqsClient(
+            receiveMessageResponse: new ReceiveMessageResponse
+            {
+                Messages = null
+            },
+            queueAttributesResponse: new GetQueueAttributesResponse
+            {
+                Attributes = new Dictionary<string, string>
+                {
+                    [QueueAttributeName.ApproximateNumberOfMessages] = "123",
+                    [QueueAttributeName.ApproximateNumberOfMessagesNotVisible] = "7"
+                }
+            }));
+
+        var depth = await sqsClient.GetQueueDepthAsync("https://sqs.example.com/queue");
+
+        Assert.Equal(123, depth.VisibleMessages);
+        Assert.Equal(7, depth.MessagesInFlight);
+    }
+
+    private sealed class FakeAmazonSqsClient(
+        ReceiveMessageResponse receiveMessageResponse,
+        GetQueueAttributesResponse? queueAttributesResponse = null)
         : AmazonSQSClient(new AnonymousAWSCredentials(), RegionEndpoint.USEast1)
     {
         public override Task<ReceiveMessageResponse> ReceiveMessageAsync(
             ReceiveMessageRequest request,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(response);
+            return Task.FromResult(receiveMessageResponse);
+        }
+
+        public override Task<GetQueueAttributesResponse> GetQueueAttributesAsync(
+            GetQueueAttributesRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(queueAttributesResponse ?? new GetQueueAttributesResponse());
         }
     }
 }

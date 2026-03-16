@@ -16,9 +16,9 @@ public sealed class CampaignSendWorkflow(
     TextWriter? runtimeOutput = null,
     IServiceScopeFactory? serviceScopeFactory = null) : ICampaignSendWorkflow
 {
-    private const int MaxParallelSends = 4;
+    private const int MaxParallelSends = 16;
     private readonly IOperationsMonitor operationsMonitor = runtimeOperationsMonitor ?? NullOperationsMonitor.Instance;
-    private readonly TextWriter output = runtimeOutput ?? Console.Out;
+    private readonly TextWriter output = runtimeOutput ?? TextWriter.Null;
 
     public async Task<IReadOnlyList<CampaignSendSummaryRecord>> ListCampaignsAsync(
         CancellationToken cancellationToken = default)

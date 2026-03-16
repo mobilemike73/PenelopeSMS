@@ -6,6 +6,10 @@ public interface IAwsSqsClient
         string queueUrl,
         CancellationToken cancellationToken = default);
 
+    Task<SqsQueueDepthSnapshot> GetQueueDepthAsync(
+        string queueUrl,
+        CancellationToken cancellationToken = default);
+
     Task DeleteMessageAsync(
         string queueUrl,
         string receiptHandle,
@@ -16,3 +20,7 @@ public sealed record SqsQueueMessage(
     string MessageId,
     string Body,
     string ReceiptHandle);
+
+public sealed record SqsQueueDepthSnapshot(
+    int VisibleMessages,
+    int MessagesInFlight);

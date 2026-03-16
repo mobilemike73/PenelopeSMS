@@ -107,6 +107,11 @@ public sealed class DeliveryRuntimeIntegrationTests
             return Task.FromResult(message);
         }
 
+        public Task<SqsQueueDepthSnapshot> GetQueueDepthAsync(string queueUrl, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new SqsQueueDepthSnapshot(0, 0));
+        }
+
         public Task DeleteMessageAsync(string queueUrl, string receiptHandle, CancellationToken cancellationToken = default)
         {
             DeleteCalls++;

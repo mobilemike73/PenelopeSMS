@@ -105,6 +105,17 @@ public sealed class HostBootstrapTests
         var hostedServices = host.Services.GetServices<IHostedService>();
 
         Assert.DoesNotContain(hostedServices, service => service is DeliveryCallbackWorker);
+        Assert.Contains(hostedServices, service => service is CampaignSendDispatcher);
+    }
+
+    [Fact]
+    public void BuildHostDoesNotRegisterCampaignSendDispatcherInWorkerMode()
+    {
+        using var host = CreateHost(AppMode.Worker);
+
+        var hostedServices = host.Services.GetServices<IHostedService>();
+
+        Assert.DoesNotContain(hostedServices, service => service is CampaignSendDispatcher);
     }
 
     [Fact]

@@ -15,4 +15,6 @@ public sealed class AwsOptions
     public string CallbackQueueUrl { get; init; } = string.Empty;
 
     public string CallbackDeadLetterQueueUrl { get; init; } = string.Empty;
+
+    public int CallbackWorkerConcurrency { get; init; } = 8;
 }
